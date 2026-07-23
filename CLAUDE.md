@@ -80,10 +80,12 @@ Local markdown, one file per ticket, git-tracked. Lifecycle:
 
 ```
 CLAUDE.md                 ← you are here; loads steering + describes the workforce
-steering/                 ← binding rules (overview, security, engineering, languages/ — TBD)
-.claude/agents/           ← the workforce definitions (code-<stack> not yet added)
+README.md                 ← human-facing setup/usage (dev setup, workflow monitor)
+steering/                 ← binding rules (overview, security, engineering, languages/typescript.md)
+.claude/agents/           ← the workforce definitions (product, design, code-frontend, pr-review, documentation)
 .claude/workflows/        ← feature.js orchestration
 tickets/                  ← work items (markdown)
+scripts/                  ← dev tooling (watch_workflows.py — live workflow monitor)
 .env.example              ← secret KEYS only (real .env is git-ignored) — create once needed
 ```
 

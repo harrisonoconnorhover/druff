@@ -1,4 +1,5 @@
-import { PipelineCanvas } from "@/features/pipeline-canvas/PipelineCanvas";
+import { GraphEditor } from "@/features/graph-io/GraphEditor";
+import { NodeInspector } from "@/features/pipeline-canvas/inspector/NodeInspector";
 
 export default function Home() {
   return (
@@ -7,8 +8,11 @@ export default function Home() {
         <h1 className="text-sm font-semibold">Druff</h1>
         <p className="text-xs text-muted-foreground">Dander pipeline-graph editor</p>
       </header>
-      <div className="flex-1">
-        <PipelineCanvas />
+      <div className="flex min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
+          <GraphEditor />
+        </div>
+        <NodeInspector />
       </div>
     </main>
   );

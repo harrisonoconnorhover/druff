@@ -1,0 +1,90 @@
+import type { NodeField } from "@/lib/pipeline-graph/schema";
+
+/**
+ * The four draggable node kinds the palette (DRUFF-2) and `PipelineNode` (canvas rendering) both
+ * understand. Canonical definition lives here (the leaf `lib/pipeline-graph` contract layer) per
+ * this ticket's Design, rather than in the canvas feature, so the converter and the feature share
+ * one source of truth without the feature owning a type the data-layer also depends on.
+ */
+export type PipelineNodeKind = "source" | "transform" | "write" | "trigger";
+
+/**
+ * The React Flow node-data contract for every pipeline node kind: a lossless superset of Dander's
+ * on-disk graph-node shape (`name`/`type`/`config`/`fields`) plus `kind`, the one field that is
+ * pure UI/derived state and is **never** written back to the graph — see `canvas-convert.ts`.
+ *
+ * `config`/`fields` stay optional (rather than defaulting to `{}`/`[]` here) so an
+ * as-yet-unconfigured node (freshly dropped from the palette, or a pre-DRUFF-4 seed/fixture) stays
+ * a valid value without every call site needing to supply empty placeholders.
+ */
+export type PipelineNodeData = {
+  /** Human label; maps 1:1 to the graph node's `name`. */
+  name: string;
+  /** Authoritative free-form Dander type token (e.g. `source`/`target`); maps 1:1 to the graph
+   * node's `type`. Not the same thing as `kind` — see `TYPE_TO_KIND`. */
+  type: string;
+  /** UI-only visual grouping (which palette icon/accent to render). Derived from `type` via
+   * `kindForType` on import; never written to the graph. */
+  kind: PipelineNodeKind;
+  /**
+   * UI-only pre-made-connector identity (DRUFF-6), e.g. `"greenhouse"` — a registry key
+   * (`@/features/connector-library`), not a Dander concept. When set, the node is rendered/edited
+   * via that connector's descriptor (icon/name on the canvas, a descriptor-driven form in the
+   * inspector) instead of the generic kind styling/config editor. Never written to the graph
+   * directly: on save, `canvas-convert.ts` maps it to Dander's node `type` (`danderType`); on load,
+   * it's re-derived from `type` via `getConnectorByDanderType`. Absent for a non-connector node.
+   */
+  connectorId?: string;
+  /** Kind-specific config, edited via the inspector's `NodeConfigEditor` (DRUFF-3) / a connector
+   * form (DRUFF-6). Maps 1:1 to the graph node's `config`. */
+  config?: Record<string, unknown>;
+  /** Declared field schema. Maps 1:1 to the graph node's `fields`. */
+  fields?: NodeField[];
+};
+
+/**
+ * A node's canvas position, keyed by node id. The one piece of canvas state Dander's graph has no
+ * room for — the pipeline-graph shape is deliberately layout-free (see `canvas-convert.ts`'s
+ * "Positions" doc comment) — so this is an app-only sidecar persisted alongside the graph
+ * (DRUFF-5's localStorage envelope), never smuggled into a node's `config`/`metadata`.
+ */
+export type GraphLayout = Record<string, { x: number; y: number }>;
+
+/**
+ * Config-driven mapping from Dander's free-form `node.type` token to the canvas's closed `kind`
+ * grouping (`steering/02-engineering.md`: config-driven over code-driven — one table to extend
+ * rather than branching code). The exact token set is a product decision still being pressured by
+ * DRUFF-6 (connectors); flagged in this ticket's Design rather than over-built here. `"target"` is
+ * mapped to the UI's `"write"` kind per Dander's own example (`crm_to_warehouse_example` uses
+ * `source`/`target`), since Dander has no `"write"` token of its own.
+ */
+export const TYPE_TO_KIND: Record<string, PipelineNodeKind> = {
+  source: "source",
+  transform: "transform",
+  target: "write",
+  trigger: "trigger",
+};
+
+/**
+ * Fallback `kind` for a `type` token absent from `TYPE_TO_KIND` (e.g. an unrecognized custom
+ * connector type) — keeps `graphToCanvas` total (never throws on an unknown token) rather than the
+ * import failing outright over a cosmetic grouping.
+ */
+export const DEFAULT_NODE_KIND: PipelineNodeKind = "transform";
+
+/** Derives a node's canvas `kind` from its graph `type`, per `TYPE_TO_KIND`, falling back to
+ * `DEFAULT_NODE_KIND` for an unrecognized token. */
+export function kindForType(type: string): PipelineNodeKind {
+  return TYPE_TO_KIND[type] ?? DEFAULT_NODE_KIND;
+}
+
+/**
+ * Inverse of `TYPE_TO_KIND`: the default `type` token a freshly-created node of a given `kind`
+ * (dropped from the palette, DRUFF-2) is seeded with. Derived from the same table — rather than a
+ * second, hand-maintained reverse map — so the pairing can't drift out of sync with `kindForType`.
+ * Falls back to the kind string itself if no table entry maps to it.
+ */
+export function defaultTypeForKind(kind: PipelineNodeKind): string {
+  const entry = Object.entries(TYPE_TO_KIND).find(([, mappedKind]) => mappedKind === kind);
+  return entry ? entry[0] : kind;
+}
