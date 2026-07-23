@@ -34,10 +34,7 @@ created: 2026-07-22
 ---
 ```
 
-> **Note:** there is no `code-frontend` agent yet — the frontend stack hasn't been chosen. Don't
-> create `component: frontend` tickets until `.claude/agents/code-frontend.md` (or whatever it
-> ends up named) and a matching `steering/languages/<stack>.md` exist. `component: docs` works
-> today via the `documentation` agent.
+Stack is Next.js/React/TypeScript — `component: frontend` tickets build via `.claude/agents/code-frontend.md`, following `steering/languages/typescript.md`.
 
 ## Body sections (in order)
 

@@ -10,9 +10,8 @@ Code agent can implement without guessing.
 
 ## Before anything
 Read `steering/00-project-overview.md`, `steering/02-engineering.md`, `steering/01-security.md`,
-and the `languages/*.md` file matching the ticket's `component` (once one exists — see
-`tickets/README.md` for the current stack-TBD caveat). Read the ticket file itself. Grep/Glob the
-codebase for existing components/patterns you must fit into — **reuse before you invent**.
+and `steering/languages/typescript.md`. Read the ticket file itself. Grep/Glob the codebase for
+existing components/patterns you must fit into — **reuse before you invent**.
 
 ## Design principles (from 02-engineering.md — apply them)
 - **Interfaces/contracts first.** Depend on abstractions (typed props, a data-layer contract, a

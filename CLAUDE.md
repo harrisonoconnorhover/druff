@@ -29,13 +29,9 @@ into every session:
 @steering/01-security.md
 @steering/02-engineering.md
 
-**Language rules load on demand (Kiro-style conditional inclusion), not globally** — once the
-stack is chosen, add `steering/languages/<stack>.md` and reference it here, mirroring Dander's:
-- Python → `steering/languages/python.md`
-- BigQuery SQL → `steering/languages/sql.md`
-- Terraform/HCL → `steering/languages/terraform.md`
-
-None of these exist yet for Druff — see `steering/languages/README.md`.
+**Language rules load on demand (Kiro-style conditional inclusion), not globally** — an agent
+reads only the file matching what it's touching:
+- TypeScript/React → `steering/languages/typescript.md`
 
 ## The agent workforce (`.claude/agents/`)
 
@@ -43,7 +39,7 @@ None of these exist yet for Druff — see `steering/languages/README.md`.
 |---|---|
 | **product** | Plain-English request → small, independently-implementable tickets with acceptance criteria. |
 | **design** | Ticket → clean, interface-first technical design. |
-| **code-\<stack\>** | *Not created yet* — implements a ticket in the chosen frontend stack. Add once the stack is picked (see `steering/00-project-overview.md`). |
+| **code-frontend** | Implements a ticket in Next.js/React/TypeScript, per `steering/languages/typescript.md`. |
 | **pr-review** | Quality gate: implementation vs. acceptance criteria + steering → PASS, or FAIL + addendum. |
 | **documentation** | READMEs, component docs, usage guides; keeps docs true to code. |
 
@@ -59,8 +55,6 @@ request → Product (writes tickets/) → Design (per ticket) → Build[ Code �
 - **Design** produces a technical design per ticket (concurrently).
 - **Build** implements + reviews each ticket **serially**; a FAIL loops back to the code agent with
   a concrete addendum, up to a capped number of rounds, until PASS.
-- Right now, only `component: docs` tickets can actually build — `component: frontend` has no
-  code agent yet (see the table above). Product tickets accordingly until that's added.
 
 **Run it** (requires explicit opt-in each time — say "use a workflow" / "ultracode"):
 > Run the `feature` workflow with args: `"<describe the feature in plain English>"`.

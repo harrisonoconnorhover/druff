@@ -16,12 +16,10 @@ export const meta = {
 // matching .claude/agents/<role>.md definition (single source of truth). The model tier that would
 // come from the agent's frontmatter is passed explicitly here instead.
 //
-// NOTE (ported from Dander): there is no code-<stack> agent yet — the frontend stack hasn't been
-// chosen. Add one at .claude/agents/code-<stack>.md once it is, then add it to ROLE_FILE,
-// ROLE_MODEL, and CODE_ROLE below (mirroring Dander's code-python/code-sql/code-terraform).
 const ROLE_FILE = {
   product: '.claude/agents/product.md',
   design: '.claude/agents/design.md',
+  'code-frontend': '.claude/agents/code-frontend.md',
   'pr-review': '.claude/agents/pr-review.md',
   documentation: '.claude/agents/documentation.md',
 }
@@ -29,6 +27,7 @@ const ROLE_MODEL = {
   product: 'opus',
   design: 'opus',
   'pr-review': 'opus',
+  'code-frontend': 'sonnet',
   documentation: 'sonnet',
 }
 
@@ -59,9 +58,9 @@ if (!request) {
 // How many review rounds before we give up looping a ticket back to code.
 const MAX_REVIEW_ROUNDS = 3
 
-// component -> which code role implements it. 'frontend' has no agent yet (see note above) —
-// tickets shouldn't be created with component: frontend until code-<stack>.md exists.
+// component -> which code role implements it.
 const CODE_ROLE = {
+  frontend: 'code-frontend',
   docs: 'documentation',
 }
 

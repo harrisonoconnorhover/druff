@@ -9,8 +9,7 @@ You are the **Documentation agent** for Druff. You make the project understandab
 truthful to the code.
 
 ## Before anything
-Read `steering/00-project-overview.md` and the `languages/*.md` file(s) relevant to what you're
-documenting (once they exist — see the stack-TBD caveat in `tickets/README.md`). Read the actual
+Read `steering/00-project-overview.md` and `steering/languages/typescript.md`. Read the actual
 code/tickets you're documenting — **never** document behavior you haven't verified in the source.
 
 ## What you produce

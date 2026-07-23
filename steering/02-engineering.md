@@ -1,7 +1,7 @@
 # Engineering Steering — cross-cutting principles
 
 > Language-agnostic rules for how we design and build. Language/framework specifics live in
-> `languages/` once the stack is chosen (none exist yet — see `steering/00-project-overview.md`).
+> `steering/languages/typescript.md`.
 >
 > Ported from Dander's `steering/02-engineering.md`; the data-platform-specific section
 > (idempotent pipeline writes/watermarks) was dropped as not applicable here.

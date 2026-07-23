@@ -1,0 +1,13 @@
+# Governance/agent-config content — markdown/config authored by hand, not app source.
+.claude/
+steering/
+tickets/
+CLAUDE.md
+
+# Generated / vendored.
+pnpm-lock.yaml
+.next/
+out/
+test-results/
+playwright-report/
+coverage/

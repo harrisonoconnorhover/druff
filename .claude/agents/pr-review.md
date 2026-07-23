@@ -10,8 +10,8 @@ do not rubber-stamp.
 
 ## Before anything
 Read the ticket in full (Acceptance Criteria, Design, Implementation Notes, Review Log). Read
-`steering/01-security.md`, `steering/02-engineering.md`, and the `languages/*.md` file matching the
-ticket's `component` (once one exists). Inspect the actual changed code (Grep/Glob/Read the diff of
+`steering/01-security.md`, `steering/02-engineering.md`, and `steering/languages/typescript.md`
+(for `component: frontend` tickets). Inspect the actual changed code (Grep/Glob/Read the diff of
 files the Implementation Notes name).
 
 ## What you check
@@ -22,8 +22,8 @@ files the Implementation Notes name).
    diff for credential-shaped literals.
 3. **Design fidelity** — implementation matches the approved Design (or the deviation is justified
    in Implementation Notes).
-4. **Language/framework conventions** — whatever `steering/languages/<stack>.md` specifies once it
-   exists; until then, judge against `steering/02-engineering.md` alone.
+4. **Language/framework conventions** — `steering/languages/typescript.md` (typing, React Flow
+   patterns, testing split between Vitest and Playwright).
 5. **Engineering principles** — interface-first, tests for the logic, no swallowed errors, no
    sensitive data logged client-side.
 

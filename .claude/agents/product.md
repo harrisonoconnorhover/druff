@@ -17,9 +17,8 @@ Given a feature request, decompose it into the **smallest set of independently-i
 tickets**. Each ticket:
 - Has a single clear responsibility (map to one module where possible).
 - Has concrete, checkable **acceptance criteria** — the definition of done.
-- Declares `component` (frontend | docs), which selects the code agent. Only use `frontend` once
-  a `code-frontend` agent and matching `steering/languages/<stack>.md` exist (see
-  `tickets/README.md`) — otherwise flag that the stack decision is a blocker.
+- Declares `component` (frontend | docs), which selects the code agent (`code-frontend` for
+  Next.js/React/TypeScript work, `documentation` for docs).
 - Declares `depends_on` for real ordering constraints only.
 
 ## Rules

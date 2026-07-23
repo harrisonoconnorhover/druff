@@ -8,7 +8,7 @@
 *.pfx
 credentials.json
 
-# ── Frontend (Node) — adjust once the framework/bundler is chosen ────
+# ── Frontend (Node / Next.js) ─────────────────────────────────────────
 node_modules/
 dist/
 build/
@@ -16,8 +16,15 @@ build/
 .turbo/
 .vite/
 .next/
+out/
 coverage/
+test-results/
+playwright-report/
+blob-report/
 *.log
+*.tsbuildinfo
+next-env.d.ts
+.vercel
 
 # ── Editor / OS ───────────────────────────────────────────────────────
 .DS_Store
