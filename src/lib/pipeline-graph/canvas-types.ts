@@ -1,4 +1,4 @@
-import type { NodeField } from "@/lib/pipeline-graph/schema";
+import type { NodeField, PipelineEdge } from "@/lib/pipeline-graph/schema";
 
 /**
  * The four draggable node kinds the palette (DRUFF-2) and `PipelineNode` (canvas rendering) both
@@ -49,6 +49,23 @@ export type PipelineNodeData = {
  * (DRUFF-5's localStorage envelope), never smuggled into a node's `config`/`metadata`.
  */
 export type GraphLayout = Record<string, { x: number; y: number }>;
+
+/**
+ * React Flow edge-`data` contract: the subset the DRUFF-4 converters round-trip to/from a Dander
+ * graph edge (`mappings`/`join`/`metadata`). All optional so a bare/seed edge with no data (e.g.
+ * `SEED_GRAPH`'s placeholder edges) stays a valid value with no placeholder fields required.
+ * Promoted here (rather than left as `canvas-convert.ts`'s private `CanvasEdgeData`) so the store
+ * (`graph-store.ts`) and the inspector (DRUFF-8) share the same typed shape the converter already
+ * round-trips, instead of both reaching into `unknown`/a locally-duplicated type.
+ */
+export type PipelineEdgeData = {
+  /** Field-to-field lineage mappings (DRUFF-9 fills these in via the inspector). */
+  mappings?: PipelineEdge["mappings"];
+  /** Optional join specification combining two upstream sources (DRUFF-10 fills this in). */
+  join?: PipelineEdge["join"];
+  /** Free-form tag/label bag, mirrored from the graph edge's `metadata`. */
+  metadata?: PipelineEdge["metadata"];
+};
 
 /**
  * Config-driven mapping from Dander's free-form `node.type` token to the canvas's closed `kind`

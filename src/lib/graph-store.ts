@@ -9,7 +9,7 @@ import {
   type Node,
   type NodeChange,
 } from "@xyflow/react";
-import type { PipelineNodeData } from "@/lib/pipeline-graph";
+import type { PipelineNodeData, PipelineEdgeData } from "@/lib/pipeline-graph";
 
 /**
  * Single source of truth for the canvas graph (nodes + edges). Owns exactly two things: the
@@ -20,11 +20,11 @@ import type { PipelineNodeData } from "@/lib/pipeline-graph";
  */
 export type GraphState = {
   nodes: Node<PipelineNodeData>[];
-  edges: Edge[];
+  edges: Edge<PipelineEdgeData>[];
   /** Applies React Flow's own node changes (select/drag/dimension/remove/…) via `applyNodeChanges`. */
   onNodesChange: (changes: NodeChange<Node<PipelineNodeData>>[]) => void;
   /** Applies React Flow's own edge changes via `applyEdgeChanges`. */
-  onEdgesChange: (changes: EdgeChange<Edge>[]) => void;
+  onEdgesChange: (changes: EdgeChange<Edge<PipelineEdgeData>>[]) => void;
   /** Adds a new edge for a completed connection via `addEdge`. */
   onConnect: (connection: Connection) => void;
   /** Appends an already-constructed node. Node construction (kind + drop position) is DRUFF-2's job. */
@@ -34,19 +34,29 @@ export type GraphState = {
   /** Removes a node and prunes any edge touching it, so a removal never leaves a dangling edge. */
   removeNode: (id: string) => void;
   /**
+   * Shallow-merges `patch` into the target edge's `data` (creating it if absent, since a bare/seed
+   * edge carries none), replacing the edge so React Flow re-renders. Edge analogue of
+   * `updateNodeData` — DRUFF-9 (mappings) and DRUFF-10 (join) write through this, never through
+   * inspector-local state, so an edit can never drift from the canvas.
+   */
+  updateEdgeData: (id: string, patch: Partial<PipelineEdgeData>) => void;
+  /**
    * Replaces the entire nodes/edges set in one shot. Added for DRUFF-5's hydration/import paths
    * (localStorage load, file import): both are a wholesale replacement of the canvas, not an
    * incremental edit, so this bypasses React Flow's `applyNodeChanges`/`applyEdgeChanges`
    * pipeline entirely rather than synthesizing a change list for it.
    */
-  setGraph: (nodes: Node<PipelineNodeData>[], edges: Edge[]) => void;
+  setGraph: (nodes: Node<PipelineNodeData>[], edges: Edge<PipelineEdgeData>[]) => void;
 };
 
 /**
  * Placeholder graph proving the canvas end-to-end (drag, pan/zoom, redraw an edge) — not a real
  * pipeline. Real graphs will come from Dander's pipeline-graph contract once that's wired up.
  */
-export const SEED_GRAPH: { nodes: Node<PipelineNodeData>[]; edges: Edge[] } = {
+export const SEED_GRAPH: {
+  nodes: Node<PipelineNodeData>[];
+  edges: Edge<PipelineEdgeData>[];
+} = {
   nodes: [
     {
       id: "1",
@@ -68,8 +78,8 @@ export const SEED_GRAPH: { nodes: Node<PipelineNodeData>[]; edges: Edge[] } = {
     },
   ],
   edges: [
-    { id: "e1-2", source: "1", target: "2" },
-    { id: "e2-3", source: "2", target: "3" },
+    { id: "e1-2", source: "1", target: "2", type: "pipelineEdge" },
+    { id: "e2-3", source: "2", target: "3", type: "pipelineEdge" },
   ],
 };
 
@@ -80,7 +90,7 @@ export const SEED_GRAPH: { nodes: Node<PipelineNodeData>[]; edges: Edge[] } = {
  */
 export function createGraphState(seed: {
   nodes: Node<PipelineNodeData>[];
-  edges: Edge[];
+  edges: Edge<PipelineEdgeData>[];
 }): StateCreator<GraphState> {
   return (set, get) => ({
     nodes: seed.nodes,
@@ -117,6 +127,14 @@ export function createGraphState(seed: {
       });
     },
 
+    updateEdgeData: (id, patch) => {
+      set({
+        edges: get().edges.map((edge) =>
+          edge.id === id ? { ...edge, data: { ...(edge.data ?? {}), ...patch } } : edge,
+        ),
+      });
+    },
+
     setGraph: (nodes, edges) => {
       set({ nodes, edges });
     },
@@ -135,5 +153,16 @@ export const useGraphStore = create<GraphState>(createGraphState(SEED_GRAPH));
  */
 export function selectSelectedNode(state: GraphState): Node<PipelineNodeData> | null {
   const selected = state.nodes.filter((node) => node.selected);
+  return selected.length === 1 ? selected[0] : null;
+}
+
+/**
+ * Selector for the edge inspector (DRUFF-8): the sole selected edge, or `null` when zero or more
+ * than one edge is selected. Mirrors `selectSelectedNode` exactly — selection lives on
+ * `edge.selected` (React Flow writes it via `onEdgesChange` → `applyEdgeChanges`), so this derives
+ * from `edges` rather than adding a `selectedEdgeId` field, keeping exactly one source of truth.
+ */
+export function selectSelectedEdge(state: GraphState): Edge<PipelineEdgeData> | null {
+  const selected = state.edges.filter((edge) => edge.selected);
   return selected.length === 1 ? selected[0] : null;
 }

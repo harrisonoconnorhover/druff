@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // DRUFF-14: same-origin Monaco assets copied from the pinned `monaco-editor` dependency by
+    // scripts/copy-monaco-assets.mjs — generated, git-ignored, never hand-authored.
+    "public/monaco/**",
   ]),
 ]);
 

@@ -4,6 +4,8 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { NODE_KINDS } from "@/features/pipeline-canvas/nodes/nodeKinds";
 import { getConnector } from "@/features/connector-library/registry";
+import { useNodeViolations } from "@/features/pipeline-canvas/validation/ViolationContext";
+import { ViolationMarker } from "@/features/pipeline-canvas/validation/ViolationMarker";
 import type { PipelineNodeData, PipelineNodeKind } from "@/lib/pipeline-graph";
 
 // Re-exported for existing consumers; canonical definitions live in `@/lib/pipeline-graph`
@@ -18,20 +20,32 @@ export type { PipelineNodeData, PipelineNodeKind };
  * that connector's icon and shows its name (e.g. "Greenhouse") in place of the generic kind label,
  * so it's visually identifiable as that connector rather than a plain source node. The accent color
  * still comes from `kind` — a connector is always a specific kind, never a kind of its own.
+ *
+ * A node with one or more validation violations (DRUFF-16, `useNodeViolations`) gets a destructive
+ * ring alongside the existing selection ring, plus a `ViolationMarker` badge in its corner listing
+ * every violation on hover — the entire inline validation surface for nodes (AC2/AC3).
  */
-export function PipelineNode({ data, selected }: NodeProps & { data: PipelineNodeData }) {
+export function PipelineNode({ id, data, selected }: NodeProps & { data: PipelineNodeData }) {
   const { icon: KindIcon, accent } = NODE_KINDS[data.kind];
   const connector = data.connectorId ? getConnector(data.connectorId) : undefined;
   const Icon = connector?.icon ?? KindIcon;
+  const violations = useNodeViolations(id);
+  const flagged = violations.length > 0;
 
   return (
     <div
       className={cn(
-        "min-w-[180px] rounded-md border border-l-4 bg-card px-3 py-2 shadow-sm",
+        "relative min-w-[180px] rounded-md border border-l-4 bg-card px-3 py-2 shadow-sm",
         accent,
         selected && "ring-2 ring-ring",
+        flagged && "ring-2 ring-destructive",
       )}
     >
+      {flagged && (
+        <div className="absolute -top-2 -right-2">
+          <ViolationMarker violations={violations} />
+        </div>
+      )}
       <Handle type="target" position={Position.Left} className="!bg-muted-foreground" />
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" />

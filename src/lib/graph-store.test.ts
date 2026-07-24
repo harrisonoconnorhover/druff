@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createStore } from "zustand/vanilla";
 import type { Node } from "@xyflow/react";
-import { createGraphState, type GraphState } from "@/lib/graph-store";
+import { createGraphState, selectSelectedEdge, type GraphState } from "@/lib/graph-store";
 import type { PipelineNodeData } from "@/lib/pipeline-graph";
 
 // Fixture graph — no real/sensitive data, per steering/02-engineering.md. Two connected nodes so
@@ -119,6 +119,78 @@ describe("graph-store", () => {
     store.getState().onEdgesChange([{ type: "remove", id: "e-a-b" }]);
 
     expect(store.getState().edges).toEqual([]);
+  });
+
+  it("updateEdgeData shallow-merges the patch into the target edge's data", () => {
+    const store = makeStore();
+
+    store.getState().updateEdgeData("e-a-b", { mappings: [] });
+
+    const edgeAB = store.getState().edges.find((e) => e.id === "e-a-b");
+    expect(edgeAB?.data).toEqual({ mappings: [] });
+  });
+
+  it("updateEdgeData creates data on an edge that carries none", () => {
+    const store = makeStore();
+
+    store.getState().updateEdgeData("e-a-b", { join: { type: "left", keys: [], metadata: {} } });
+
+    const edgeAB = store.getState().edges.find((e) => e.id === "e-a-b");
+    expect(edgeAB?.data).toEqual({ join: { type: "left", keys: [], metadata: {} } });
+  });
+
+  it("updateEdgeData merges into existing data without dropping other keys", () => {
+    const store = makeStore();
+    store.setState({
+      edges: [{ id: "e-a-b", source: "a", target: "b", data: { metadata: { owner: "team-x" } } }],
+    });
+
+    store.getState().updateEdgeData("e-a-b", { mappings: [] });
+
+    const edgeAB = store.getState().edges.find((e) => e.id === "e-a-b");
+    expect(edgeAB?.data).toEqual({ metadata: { owner: "team-x" }, mappings: [] });
+  });
+
+  it("updateEdgeData leaves other edges untouched", () => {
+    const store = makeStore();
+    store.setState({
+      edges: [
+        { id: "e-a-b", source: "a", target: "b" },
+        { id: "e-b-a", source: "b", target: "a" },
+      ],
+    });
+
+    store.getState().updateEdgeData("e-a-b", { mappings: [] });
+
+    const other = store.getState().edges.find((e) => e.id === "e-b-a");
+    expect(other?.data).toBeUndefined();
+  });
+
+  it("selectSelectedEdge returns the sole selected edge", () => {
+    const store = makeStore();
+    store.setState({
+      edges: [{ id: "e-a-b", source: "a", target: "b", selected: true }],
+    });
+
+    expect(selectSelectedEdge(store.getState())?.id).toBe("e-a-b");
+  });
+
+  it("selectSelectedEdge returns null when zero edges are selected", () => {
+    const store = makeStore();
+
+    expect(selectSelectedEdge(store.getState())).toBeNull();
+  });
+
+  it("selectSelectedEdge returns null when more than one edge is selected", () => {
+    const store = makeStore();
+    store.setState({
+      edges: [
+        { id: "e-a-b", source: "a", target: "b", selected: true },
+        { id: "e-b-a", source: "b", target: "a", selected: true },
+      ],
+    });
+
+    expect(selectSelectedEdge(store.getState())).toBeNull();
   });
 
   it("setGraph wholesale-replaces nodes and edges (DRUFF-5 hydration/import)", () => {

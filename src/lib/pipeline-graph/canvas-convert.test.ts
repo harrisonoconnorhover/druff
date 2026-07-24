@@ -223,6 +223,7 @@ describe("graphToCanvas", () => {
         id: "a->b#0",
         source: "a",
         target: "b",
+        type: "pipelineEdge",
         data: {
           mappings: [{ source: "x", target: "y", transformation: null, metadata: {} }],
           join: { type: "inner", keys: [{ left: "x", right: "y" }], metadata: {} },

@@ -8,6 +8,7 @@ import {
   kindForType,
   type GraphLayout,
   type PipelineNodeData,
+  type PipelineEdgeData,
 } from "@/lib/pipeline-graph/canvas-types";
 import { getConnector, getConnectorByDanderType } from "@/features/connector-library/registry";
 
@@ -19,18 +20,6 @@ const DEFAULT_GRAPH_NAME = "untitled-pipeline";
  * graph's original node spacing (`src/lib/graph-store.ts`). */
 const FALLBACK_LAYOUT_SPACING_X = 280;
 const FALLBACK_LAYOUT_Y = 80;
-
-/**
- * The subset of a React Flow edge's opaque `data` this converter round-trips untouched to/from
- * the graph edge's `mappings`/`join`/`metadata`. This is **not** a Dander-contract boundary — it's
- * in-memory canvas state Druff itself populated — so a plain shape assertion is used here rather
- * than a Zod parse; Zod parsing happens where text actually crosses the contract (`serialize.ts`).
- */
-type CanvasEdgeData = {
-  mappings?: PipelineEdge["mappings"];
-  join?: PipelineEdge["join"];
-  metadata?: PipelineEdge["metadata"];
-};
 
 /**
  * Canvas ⇄ graph converters — the data-layer seam between the canvas store's React Flow
@@ -61,7 +50,7 @@ type CanvasEdgeData = {
  */
 export function canvasToGraph(
   nodes: Node<PipelineNodeData>[],
-  edges: Edge[],
+  edges: Edge<PipelineEdgeData>[],
   name: string = DEFAULT_GRAPH_NAME,
 ): PipelineGraph {
   return {
@@ -87,9 +76,11 @@ function nodeToGraphNode(node: Node<PipelineNodeData>): GraphNode {
   };
 }
 
-function edgeToGraphEdge(edge: Edge): PipelineEdge {
-  // See `CanvasEdgeData`'s doc comment for why this is a plain assertion, not a Zod parse.
-  const data = edge.data as CanvasEdgeData | undefined;
+function edgeToGraphEdge(edge: Edge<PipelineEdgeData>): PipelineEdge {
+  // `edge.data` is in-memory canvas state Druff itself populated, not a Dander-contract boundary,
+  // so reading it against the typed `PipelineEdgeData` shape is sufficient here; Zod parsing
+  // happens where text actually crosses the contract (`serialize.ts`).
+  const data = edge.data;
   return {
     from: edge.source,
     to: edge.target,
@@ -107,7 +98,7 @@ function edgeToGraphEdge(edge: Edge): PipelineEdge {
 export function graphToCanvas(
   graph: PipelineGraph,
   layout?: GraphLayout,
-): { nodes: Node<PipelineNodeData>[]; edges: Edge[] } {
+): { nodes: Node<PipelineNodeData>[]; edges: Edge<PipelineEdgeData>[] } {
   const fallbackLayout = computeDefaultLayout(graph);
   return {
     nodes: graph.nodes.map((node) => graphNodeToCanvasNode(node, layout, fallbackLayout)),
@@ -146,7 +137,7 @@ function graphNodeToCanvasNode(
   };
 }
 
-function graphEdgeToCanvasEdge(edge: PipelineEdge, index: number): Edge {
+function graphEdgeToCanvasEdge(edge: PipelineEdge, index: number): Edge<PipelineEdgeData> {
   return {
     // Dander's `Edge` has no id of its own; this scheme is deterministic across repeat imports of
     // the same graph (stable for a localStorage/reload round trip) and disambiguates parallel
@@ -154,6 +145,9 @@ function graphEdgeToCanvasEdge(edge: PipelineEdge, index: number): Edge {
     id: `${edge.from}->${edge.to}#${index}`,
     source: edge.from,
     target: edge.to,
+    // Every imported edge renders via the validation-aware custom edge (DRUFF-16) so a dangling/
+    // wiring fault on an imported graph is visibly flagged, not just on a freshly-drawn connection.
+    type: "pipelineEdge",
     data: {
       mappings: edge.mappings,
       join: edge.join,

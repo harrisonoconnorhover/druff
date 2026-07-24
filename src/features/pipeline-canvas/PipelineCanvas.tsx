@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { PipelineNode } from "@/features/pipeline-canvas/nodes/PipelineNode";
+import { PipelineEdge } from "@/features/pipeline-canvas/edges/PipelineEdge";
 import { createNode } from "@/features/pipeline-canvas/nodes/createNode";
 import {
   NodePalette,
@@ -18,8 +19,16 @@ import {
   parsePaletteDragPayload,
 } from "@/features/pipeline-canvas/NodePalette";
 import { useGraphStore } from "@/lib/graph-store";
+import { useGraphViolations } from "@/features/pipeline-canvas/validation/useGraphViolations";
+import { ViolationProvider } from "@/features/pipeline-canvas/validation/ViolationContext";
 
 const nodeTypes = { pipelineNode: PipelineNode };
+const edgeTypes = { pipelineEdge: PipelineEdge };
+// Every edge on the canvas renders as `PipelineEdge` (DRUFF-16) — a default React Flow edge
+// can't host a violation marker — so a freshly-drawn connection (which carries no `type` of its
+// own) is defaulted to it here. Imported/seeded edges get the same `type` explicitly, in
+// `graphEdgeToCanvasEdge` and `SEED_GRAPH`.
+const defaultEdgeOptions = { type: "pipelineEdge" };
 
 function Canvas() {
   const nodes = useGraphStore((s) => s.nodes);
@@ -29,6 +38,7 @@ function Canvas() {
   const onConnect = useGraphStore((s) => s.onConnect);
   const addNode = useGraphStore((s) => s.addNode);
   const { screenToFlowPosition } = useReactFlow();
+  const violations = useGraphViolations();
 
   // Required for `onDrop` to fire at all — the HTML5 DnD spec drops the event unless the drag
   // target's `dragover` calls `preventDefault()`.
@@ -50,21 +60,25 @@ function Canvas() {
   );
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      fitView
-    >
-      <Background />
-      <Controls />
-      <MiniMap pannable zoomable />
-    </ReactFlow>
+    <ViolationProvider value={violations}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        fitView
+      >
+        <Background />
+        <Controls />
+        <MiniMap pannable zoomable />
+      </ReactFlow>
+    </ViolationProvider>
   );
 }
 

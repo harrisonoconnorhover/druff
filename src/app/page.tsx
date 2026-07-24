@@ -1,5 +1,5 @@
 import { GraphEditor } from "@/features/graph-io/GraphEditor";
-import { NodeInspector } from "@/features/pipeline-canvas/inspector/NodeInspector";
+import { Inspector } from "@/features/pipeline-canvas/inspector/Inspector";
 
 export default function Home() {
   return (
@@ -12,7 +12,7 @@ export default function Home() {
         <div className="min-w-0 flex-1">
           <GraphEditor />
         </div>
-        <NodeInspector />
+        <Inspector />
       </div>
     </main>
   );

@@ -16,6 +16,13 @@ export {
   JoinSpecSchema,
   PipelineEdgeSchema,
   PipelineGraphSchema,
+  TriggerKindSchema,
+  TriggerSchema,
+  WriteModeSchema,
+  PartitioningGranularitySchema,
+  DestinationSpecSchema,
+  PartitioningSpecSchema,
+  WriterConfigSchema,
 } from "@/lib/pipeline-graph/schema";
 export type {
   NodeField,
@@ -28,6 +35,13 @@ export type {
   JoinSpec,
   PipelineEdge,
   PipelineGraph,
+  TriggerKind,
+  Trigger,
+  WriteMode,
+  PartitioningGranularity,
+  DestinationSpec,
+  PartitioningSpec,
+  WriterConfig,
 } from "@/lib/pipeline-graph/schema";
 
 export { encodeGraph, decodeGraph, GraphDecodeError } from "@/lib/pipeline-graph/serialize";
@@ -42,6 +56,7 @@ export {
 export type {
   PipelineNodeData,
   PipelineNodeKind,
+  PipelineEdgeData,
   GraphLayout,
 } from "@/lib/pipeline-graph/canvas-types";
 
@@ -51,3 +66,11 @@ export {
   extractLayout,
   computeDefaultLayout,
 } from "@/lib/pipeline-graph/canvas-convert";
+
+export { validateStructure, validateFieldWiring } from "@/lib/pipeline-graph/graph-validation";
+export type {
+  Violation,
+  ViolationKind,
+  FieldReferenceKind,
+  EdgeRef,
+} from "@/lib/pipeline-graph/violations";

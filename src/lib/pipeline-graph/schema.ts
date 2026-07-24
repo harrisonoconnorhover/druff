@@ -151,6 +151,97 @@ export const PipelineEdgeSchema = z.preprocess(
 );
 export type PipelineEdge = z.infer<typeof PipelineEdgeSchema>;
 
+/** The closed set of trigger kinds Dander's `Trigger` may declare (Dander's `TriggerKind`):
+ *  `schedule` (cron-driven), `manual` (manual / external-event driven — this is the Trigger config
+ *  category's "webhook/event" mode, DRUFF-13), and `dependency` (runs after named upstream ids). */
+export const TriggerKindSchema = z.enum(["schedule", "dependency", "manual"]);
+export type TriggerKind = z.infer<typeof TriggerKindSchema>;
+
+/**
+ * A pipeline trigger (Dander's `Trigger`, `graph.py`): a `kind` discriminator plus kind-specific
+ * payload fields. Structural shape only, mirroring this file's documented stance — Dander's
+ * *semantic* cross-kind payload rule (`Trigger._check_kind_payload`: a `schedule` trigger must
+ * carry `cron`, a `dependency` trigger must carry `depends_on`, etc.) is out of scope here and
+ * lives in `triggerConfig.ts`'s `validateTrigger` (DRUFF-13), not in this schema. Every payload
+ * field is optional/defaulted so a trigger of any kind parses without throwing regardless of which
+ * other kind's fields happen to be present or absent.
+ *
+ * Opaque and inert throughout Druff: `cron` is stored as an authored string and never parsed or
+ * scheduled client-side, matching the "Druff never executes user code" non-goal.
+ */
+export const TriggerSchema = z.object({
+  kind: TriggerKindSchema,
+  /** Opaque cron expression (`schedule` kind). Never evaluated in the browser. */
+  cron: z.string().nullable().default(null),
+  /** Optional opaque external-event name (`manual` kind). */
+  event: z.string().nullable().default(null),
+  /** Upstream node ids by name only (`dependency` kind). */
+  depends_on: z.array(z.string()).default([]),
+  metadata: metadataSchema,
+});
+export type Trigger = z.infer<typeof TriggerSchema>;
+
+/** The closed set of write modes Dander's `WriterConfig.write_mode` may declare (Dander's
+ *  `WriteMode`, `../dander/src/dander/writer/base.py`): `scd1`/`scd2` (slowly-changing-dimension
+ *  merges), `snapshot` (full replace), `incremental` (append/merge driven by `cursor_field`). */
+export const WriteModeSchema = z.enum(["scd1", "scd2", "snapshot", "incremental"]);
+export type WriteMode = z.infer<typeof WriteModeSchema>;
+
+/** The closed set of BigQuery partitioning granularities Dander's `PartitioningSpec.granularity`
+ *  may declare, defaulting to `day` (Dander's `PartitioningType`). */
+export const PartitioningGranularitySchema = z.enum(["hour", "day", "month", "year"]);
+export type PartitioningGranularity = z.infer<typeof PartitioningGranularitySchema>;
+
+/**
+ * Where a `WriterConfig` writes (Dander's `DestinationSpec`, `node_config.py`). Structural shape
+ * only: `dataset`/`table`'s `Field(min_length=1)` required-non-empty semantics are the Write
+ * config category's `validateWriter` (DRUFF-17), not this schema, so a partially-authored
+ * destination still parses on read rather than throwing.
+ */
+export const DestinationSpecSchema = z.object({
+  project: z.string().nullable().default(null),
+  dataset: z.string().default(""),
+  table: z.string().default(""),
+  /** Ordered business-key column names — required non-empty for scd1/scd2/incremental, not
+   *  snapshot (`validateWriter`'s job, not this schema's). */
+  business_key: z.array(z.string()).default([]),
+});
+export type DestinationSpec = z.infer<typeof DestinationSpecSchema>;
+
+/**
+ * BigQuery table partitioning (Dander's `PartitioningSpec`). `field: null` is a **meaningful**
+ * value — BigQuery ingestion-time partitioning — distinct from `partitioning` itself being absent
+ * (no partitioning at all) on the parent `WriterConfigSchema`.
+ */
+export const PartitioningSpecSchema = z.object({
+  field: z.string().nullable().default(null),
+  granularity: PartitioningGranularitySchema.default("day"),
+  require_partition_filter: z.boolean().default(false),
+});
+export type PartitioningSpec = z.infer<typeof PartitioningSpecSchema>;
+
+/**
+ * A write/target node's writer config (Dander's `WriterConfig`, `node_config.py`, landed in
+ * DANDER-16), stored at `TargetNodeConfig.writer` — i.e. `config.writer` on the node (see this
+ * ticket's Design; not a `Node`-level sibling ambiguity, unlike `Trigger`). Structural shape only,
+ * mirroring `TriggerSchema`'s stance: Dander's *semantic* `_check_mode_requirements` validator
+ * (business_key required for scd1/scd2/incremental, cursor_field required only for incremental,
+ * clustering capped at 4 with no duplicates) is out of scope here and lives in the Write config
+ * category's `validateWriter` (`writerConfig.ts`, DRUFF-17), kept in sync with `node_config.py` by
+ * hand — Dander remains the enforcing boundary. Every field here is an ordinary identifier
+ * (dataset/table/column names) — never a secret (`steering/01-security.md`) — and none of it is
+ * ever executed or evaluated client-side.
+ */
+export const WriterConfigSchema = z.object({
+  write_mode: WriteModeSchema,
+  destination: DestinationSpecSchema,
+  cursor_field: z.string().nullable().default(null),
+  partitioning: PartitioningSpecSchema.nullable().default(null),
+  /** Ordered clustering column names — capped at 4, no duplicates (`validateWriter`'s job). */
+  clustering: z.array(z.string()).default([]),
+});
+export type WriterConfig = z.infer<typeof WriterConfigSchema>;
+
 /** The full pipeline graph: a named collection of nodes and edges (Dander's `PipelineGraph`). */
 export const PipelineGraphSchema = z.object({
   name: z.string(),
