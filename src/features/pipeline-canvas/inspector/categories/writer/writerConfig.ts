@@ -163,18 +163,31 @@ function cleanEntries(entries: string[]): string[] {
 
 /**
  * Writes an edited {@link WriterView} back onto a **copy** of `prevConfig`: every non-`writer` key
- * is preserved untouched, and `config.writer` is rebuilt as a clean Dander-shaped object from the
- * view (never a stale merge of another mode's fields) — mirrors `writeTriggerConfig`'s "rebuild,
- * don't patch" approach. `write_mode`/`destination` are always emitted (required); `project`,
- * `business_key`, `cursor_field`, `partitioning`, and `clustering` are omitted when blank/disabled,
- * matching Dander's own omit-when-default convention this codebase already follows for
- * `RequestSpec`/`Trigger`. Never mutates `prevConfig`.
+ * and every writer key this editor does not understand are preserved untouched. The fields Druff
+ * does edit are rebuilt from the view (never a stale merge of another mode's fields), while newer
+ * Dander settings such as `max_batch_rows`, `schema_evolution`, and `transport` survive any
+ * inspector edit verbatim. `write_mode`/`destination` are always emitted (required); `project`,
+ * `business_key`, `cursor_field`, `partitioning`, and `clustering` are omitted when blank/disabled.
+ * Never mutates `prevConfig`.
  */
 export function writeWriterConfig(
   prevConfig: Record<string, unknown> | undefined,
   view: WriterView,
 ): Record<string, unknown> {
   const nextConfig: Record<string, unknown> = { ...(prevConfig ?? {}) };
+  const previousWriter = isPlainRecord(prevConfig?.[WRITER_CONFIG_KEY])
+    ? prevConfig[WRITER_CONFIG_KEY]
+    : {};
+  const preservedWriterFields = { ...previousWriter };
+  for (const editableKey of [
+    "write_mode",
+    "destination",
+    "cursor_field",
+    "partitioning",
+    "clustering",
+  ]) {
+    delete preservedWriterFields[editableKey];
+  }
 
   const destination: Record<string, unknown> = {
     dataset: view.dataset.trim(),
@@ -190,6 +203,7 @@ export function writeWriterConfig(
   }
 
   const writer: Record<string, unknown> = {
+    ...preservedWriterFields,
     write_mode: view.writeMode,
     destination,
   };
@@ -214,6 +228,10 @@ export function writeWriterConfig(
 
   nextConfig[WRITER_CONFIG_KEY] = writer;
   return nextConfig;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** Looks up a mode's descriptor in {@link WRITE_MODES}; falls back to `scd1`'s descriptor for an

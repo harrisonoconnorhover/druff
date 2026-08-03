@@ -27,6 +27,7 @@ describe("parseImportedFile", () => {
     const result = parseImportedFile(EXAMPLE_GRAPH_YAML, "pipeline.yaml");
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.kind).toBe("graph-draft");
       expect(result.graph.name).toBe(EXAMPLE_GRAPH.name);
       expect(result.graph.nodes).toHaveLength(EXAMPLE_GRAPH.nodes.length);
     }
@@ -39,6 +40,51 @@ describe("parseImportedFile", () => {
     if (result.ok) {
       expect(result.graph).toEqual(EXAMPLE_GRAPH);
     }
+  });
+
+  it("projects a version-1 dander.yaml manifest into a local canvas draft", () => {
+    const result = parseImportedFile(
+      `
+version: 1
+platform:
+  region: us-central1
+pipelines:
+  greenhouse_jobs:
+    source: greenhouse_job_board
+    models: [stg_greenhouse__jobs]
+    schedule: "0 9 * * *"
+    time_zone: America/New_York
+    paused: false
+`,
+      "dander.yaml",
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.kind).toBe("manifest-preview");
+      expect(result.graph.name).toBe("dander-manifest-preview");
+      expect(result.graph.nodes.map((node) => node.name)).toEqual([
+        "Schedule: 0 9 * * *",
+        "Ingest greenhouse_job_board",
+        "Build stg_greenhouse__jobs",
+      ]);
+    }
+  });
+
+  it("rejects a graph carrying newer Dander fields Druff cannot safely preserve", () => {
+    const result = parseImportedFile(
+      `
+name: newer-graph
+trigger:
+  kind: manual
+nodes: []
+edges: []
+`,
+      "pipeline.yaml",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/unrecognized/i);
   });
 
   it("fails loud with an actionable message on malformed YAML syntax", () => {

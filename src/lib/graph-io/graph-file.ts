@@ -5,6 +5,12 @@ import {
   type GraphFormat,
   type PipelineGraph,
 } from "@/lib/pipeline-graph";
+import { parse as parseYaml } from "yaml";
+import {
+  DanderProjectManifestSchema,
+  projectDanderManifest,
+} from "@/lib/dander-project/manifest-preview";
+import type { GraphLayout } from "@/lib/pipeline-graph";
 
 /** File-extension → `GraphFormat` mapping (case-insensitive). `.yml` is accepted as a `.yaml`
  * synonym since both are common on disk for the same format. */
@@ -14,10 +20,10 @@ const EXTENSION_TO_FORMAT: Record<string, GraphFormat> = {
   json: "json",
 };
 
-/** Filenames a browser download uses per format — matches Dander's own on-disk naming. */
+/** Filenames a browser download uses per format — explicitly not deployable Dander filenames. */
 const DOWNLOAD_FILENAMES: Record<GraphFormat, string> = {
-  yaml: "pipeline.yaml",
-  json: "pipeline.json",
+  yaml: "pipeline.druff.yaml",
+  json: "pipeline.druff.json",
 };
 
 const MIME_TYPES: Record<GraphFormat, string> = {
@@ -30,7 +36,20 @@ const MIME_TYPES: Record<GraphFormat, string> = {
  * actionable error message (never a bare stack trace) — the shape `GraphToolbar`'s import handler
  * switches on to either hydrate the store or raise a fail-loud toast (`steering/02-engineering.md`).
  */
-export type ImportResult = { ok: true; graph: PipelineGraph } | { ok: false; error: string };
+export type ImportResult =
+  | {
+      ok: true;
+      kind: "graph-draft";
+      graph: PipelineGraph;
+    }
+  | {
+      ok: true;
+      kind: "manifest-preview";
+      graph: PipelineGraph;
+      positions: GraphLayout;
+      pipelineCount: number;
+    }
+  | { ok: false; error: string };
 
 /**
  * Infers a `GraphFormat` from a filename's extension (case-insensitive), or `null` if the
@@ -42,12 +61,10 @@ export function formatFromFilename(filename: string): GraphFormat | null {
 }
 
 /**
- * Parses an imported file's raw text into a validated `PipelineGraph`. Pure — no DOM, no
- * `Blob`/`File`, just `text`/`filename` in and a discriminated result out — so it's unit-testable
- * with plain fixtures (AC4). Infers format from `filename`'s extension, then runs DRUFF-4's
- * `decodeGraph`, which itself validates syntax and schema and throws a `GraphDecodeError` with an
- * actionable message; that message (never a raw parser/Zod stack trace) is what surfaces to the
- * user on failure.
+ * Parses an imported Druff graph draft or version-1 Dander project manifest. Pure — no DOM, no
+ * `Blob`/`File`, just `text`/`filename` in and a discriminated result out. Graph drafts use
+ * DRUFF-4's decoder; manifests use the one-way hosted-pipeline projector and can never be written
+ * back through this module.
  */
 export function parseImportedFile(text: string, filename: string): ImportResult {
   const format = formatFromFilename(filename);
@@ -58,8 +75,30 @@ export function parseImportedFile(text: string, filename: string): ImportResult 
     };
   }
 
+  let raw: unknown;
   try {
-    return { ok: true, graph: decodeGraph(text, format) };
+    raw = format === "yaml" ? parseYaml(text) : JSON.parse(text);
+  } catch (cause) {
+    return {
+      ok: false,
+      error: `Could not parse file as ${format.toUpperCase()}: ${describeError(cause)}`,
+    };
+  }
+
+  if (isDanderManifestCandidate(raw)) {
+    const result = DanderProjectManifestSchema.safeParse(raw);
+    if (!result.success) {
+      return {
+        ok: false,
+        error: `Dander manifest cannot be previewed: ${result.error.message}`,
+      };
+    }
+    const preview = projectDanderManifest(result.data);
+    return { ok: true, kind: "manifest-preview", ...preview };
+  }
+
+  try {
+    return { ok: true, kind: "graph-draft", graph: decodeGraph(text, format) };
   } catch (cause) {
     return {
       ok: false,
@@ -89,4 +128,14 @@ export function exportGraphToFile(graph: PipelineGraph, format: GraphFormat): vo
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isDanderManifestCandidate(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "version" in value &&
+    "pipelines" in value
+  );
 }

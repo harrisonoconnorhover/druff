@@ -26,11 +26,14 @@ below.
 
 ## Contract with Dander
 
-- TODO: how is the pipeline-graph schema shared? Likely candidate: Dander exports
-  `PipelineGraph.model_json_schema()` (Pydantic) as a versioned artifact Druff consumes, rather
-  than Druff importing Dander's Python types directly.
-- TODO: how does Druff read/write actual graph files during development — talk to a running
-  Dander instance, a local file, or both?
+- Dander's currently deployed product contract is the version-1 `dander.yaml` project manifest.
+  Druff may import that manifest into a one-way visual projection, but does not write it back or
+  deploy it.
+- Druff's YAML/JSON graph export is an editor draft. Dander's separate `PipelineGraph` model is
+  still experimental and has fields Druff does not yet author; unsupported fields must fail loud
+  rather than be silently discarded.
+- A shared, versioned schema and direct file/service connection remain future decisions. Until
+  then, the UI must state the boundary rather than imply operational integration.
 
 ## Modules (target architecture)
 
@@ -73,6 +76,11 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 ## Decision Log
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
+
+- 2026-08-03 — **Import `dander.yaml` as a one-way local visualization draft** — the hosted
+  manifest is the real deployed contract today, while Druff's graph format is not an execution
+  input. Projecting schedule/source/model structure gives immediate value without changing Dander
+  or inventing unsafe write-back semantics; exports are explicitly named Druff drafts.
 
 - 2026-07-22 — **Druff never executes user code** — custom connector/transform snippets are
   authored and stored, never run client-side. Keeps the frontend genuinely lightweight and avoids

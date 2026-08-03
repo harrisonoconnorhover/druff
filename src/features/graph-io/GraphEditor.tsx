@@ -19,6 +19,13 @@ export function GraphEditor() {
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
       <GraphToolbar viewMode={viewMode} onViewModeChange={setViewMode} />
+      <div
+        className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+        role="status"
+      >
+        Local authoring preview only. Importing dander.yaml creates an editable Druff draft; Druff
+        does not deploy or write changes back to Dander.
+      </div>
       <div className="min-h-0 flex-1">
         {viewMode === "canvas" ? <PipelineCanvas /> : <SourceView />}
       </div>

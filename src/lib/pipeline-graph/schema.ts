@@ -1,11 +1,10 @@
 import { z } from "zod";
 
 /**
- * Zod schemas mirroring Dander's on-disk pipeline-graph shape exactly (verified against Dander's
- * `src/dander/pipeline/README.md` and `src/dander/pipeline/graph.py`; see the "Contract with
- * Dander" note in `steering/00-project-overview.md`). This is the one boundary parse for the
- * whole app — any YAML/JSON crossing the Dander contract runs through these schemas, never a bare
- * cast (`steering/languages/typescript.md`: parse, don't cast).
+ * Zod schemas for Druff's current pipeline-graph draft shape. Dander's executable hosted contract
+ * is `dander.yaml`, while its separate experimental graph model has evolved beyond this UI. The
+ * strict boundary objects below therefore reject newer graph fields Druff cannot preserve instead
+ * of silently stripping them. See `steering/00-project-overview.md`.
  *
  * Zod does **structural/shape** validation only. Dander's *semantic* checks (`graph_ops`: unique
  * node ids, dangling edges, cycles, field-wiring) are explicitly out of scope here — see this
@@ -21,13 +20,15 @@ import { z } from "zod";
 const metadataSchema = z.record(z.string(), z.unknown()).default({});
 
 /** A single declared field on a node's schema (Dander's `NodeField`). */
-export const NodeFieldSchema = z.object({
-  name: z.string(),
-  type: z.string(),
-  nullable: z.boolean().default(true),
-  description: z.string().nullable().default(null),
-  metadata: metadataSchema,
-});
+export const NodeFieldSchema = z
+  .object({
+    name: z.string(),
+    type: z.string(),
+    nullable: z.boolean().default(true),
+    description: z.string().nullable().default(null),
+    metadata: metadataSchema,
+  })
+  .strict();
 export type NodeField = z.infer<typeof NodeFieldSchema>;
 
 /**
@@ -40,9 +41,9 @@ export type NodeField = z.infer<typeof NodeFieldSchema>;
 function withConfigParamsAlias(input: unknown): unknown {
   if (input !== null && typeof input === "object" && !Array.isArray(input)) {
     const record = input as Record<string, unknown>;
-    if (!("config" in record) && "params" in record) {
+    if ("params" in record) {
       const { params, ...rest } = record;
-      return { ...rest, config: params };
+      return "config" in record ? rest : { ...rest, config: params };
     }
   }
   return input;
@@ -51,13 +52,15 @@ function withConfigParamsAlias(input: unknown): unknown {
 /** A single node in a pipeline graph (Dander's `Node`). */
 export const PipelineNodeSchema = z.preprocess(
   withConfigParamsAlias,
-  z.object({
-    id: z.string(),
-    type: z.string(),
-    name: z.string(),
-    config: z.record(z.string(), z.unknown()).default({}),
-    fields: z.array(NodeFieldSchema).default([]),
-  }),
+  z
+    .object({
+      id: z.string(),
+      type: z.string(),
+      name: z.string(),
+      config: z.record(z.string(), z.unknown()).default({}),
+      fields: z.array(NodeFieldSchema).default([]),
+    })
+    .strict(),
 );
 export type PipelineNode = z.infer<typeof PipelineNodeSchema>;
 
@@ -72,13 +75,15 @@ export type TransformationKind = z.infer<typeof TransformationKindSchema>;
  * when `kind === "expression"`) are the *semantic* layer this schema deliberately does not
  * reimplement (see module doc comment).
  */
-export const TransformationSchema = z.object({
-  kind: TransformationKindSchema.default("direct"),
-  expression: z.string().nullable().default(null),
-  constant: z.unknown().default(null),
-  inputs: z.array(z.string()).default([]),
-  metadata: metadataSchema,
-});
+export const TransformationSchema = z
+  .object({
+    kind: TransformationKindSchema.default("direct"),
+    expression: z.string().nullable().default(null),
+    constant: z.unknown().default(null),
+    inputs: z.array(z.string()).default([]),
+    metadata: metadataSchema,
+  })
+  .strict();
 export type Transformation = z.infer<typeof TransformationSchema>;
 
 /** A single field-to-field lineage mapping on an edge, optionally transformed (Dander's `FieldMapping`). */
@@ -243,9 +248,11 @@ export const WriterConfigSchema = z.object({
 export type WriterConfig = z.infer<typeof WriterConfigSchema>;
 
 /** The full pipeline graph: a named collection of nodes and edges (Dander's `PipelineGraph`). */
-export const PipelineGraphSchema = z.object({
-  name: z.string(),
-  nodes: z.array(PipelineNodeSchema).default([]),
-  edges: z.array(PipelineEdgeSchema).default([]),
-});
+export const PipelineGraphSchema = z
+  .object({
+    name: z.string(),
+    nodes: z.array(PipelineNodeSchema).default([]),
+    edges: z.array(PipelineEdgeSchema).default([]),
+  })
+  .strict();
 export type PipelineGraph = z.infer<typeof PipelineGraphSchema>;

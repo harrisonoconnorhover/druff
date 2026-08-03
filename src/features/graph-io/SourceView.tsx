@@ -14,15 +14,19 @@ import { canvasToGraph, encodeGraph, type GraphFormat } from "@/lib/pipeline-gra
  * for that seam if a future ticket adds it.
  */
 export function SourceView() {
+  const graphName = useGraphStore((state) => state.graphName);
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
   const [format, setFormat] = useState<GraphFormat>("yaml");
 
-  const source = encodeGraph(canvasToGraph(nodes, edges), format);
+  const source = encodeGraph(canvasToGraph(nodes, edges, graphName), format);
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-1 border-b px-4 py-2">
+        <span className="mr-auto text-xs text-muted-foreground">
+          Druff draft — not deployable dander.yaml
+        </span>
         <Button
           variant={format === "yaml" ? "secondary" : "ghost"}
           size="sm"

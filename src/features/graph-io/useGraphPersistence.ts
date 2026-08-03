@@ -47,7 +47,7 @@ export function useGraphPersistence(options: UseGraphPersistenceOptions = {}): v
     const snapshot = persistence.load();
     if (snapshot) {
       const restored = graphToCanvas(snapshot.graph, snapshot.positions);
-      useGraphStore.getState().setGraph(restored.nodes, restored.edges);
+      useGraphStore.getState().setGraph(restored.nodes, restored.edges, snapshot.graph.name);
     }
 
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -55,7 +55,7 @@ export function useGraphPersistence(options: UseGraphPersistenceOptions = {}): v
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         persistence.save({
-          graph: canvasToGraph(state.nodes, state.edges),
+          graph: canvasToGraph(state.nodes, state.edges, state.graphName),
           positions: extractLayout(state.nodes),
         });
       }, debounceMs);

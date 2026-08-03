@@ -1,7 +1,11 @@
 # Druff
 
 Front-end companion to **[Dander](../dander)** — a visual editor for building and visualizing
-Dander pipeline graphs (drag/drop nodes, wire connections, configure sources/transforms/writes).
+pipeline drafts (drag/drop nodes, wire connections, configure sources/transforms/writes).
+
+Today Druff can import a Dander version-1 `dander.yaml` and project its hosted pipelines onto the
+canvas. That projection is an editable **local draft**: Druff does not deploy it or write changes
+back to the manifest. Dander remains the execution and infrastructure boundary.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
@@ -28,6 +32,10 @@ scripts/            dev tooling (e.g. the workflow monitor)
 pnpm install
 pnpm dev              # http://localhost:3000
 ```
+
+To visualize a current Dander project, choose **Import graph or dander.yaml** and select its
+`dander.yaml`. Druff draws each schedule, source, and selected model. Exported `.druff.yaml`/JSON
+files are editor drafts, not deployable Dander manifests.
 
 ## Everyday commands
 
@@ -59,6 +67,7 @@ available by name (until then, invoke by `scriptPath: ".claude/workflows/feature
 ```text
 /feature Add a node inspector panel for editing a selected node's properties
 ```
+
 ```text
 (or just ask Claude in chat)   run the feature workflow with: <describe the feature>
 ```
@@ -90,6 +99,6 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 
 ## Status
 
-Governance + stack scaffolded. First feature slice (canvas graph store, node palette, node
-inspector, local save/load + source view, Greenhouse connector) tracked as tickets in `tickets/`
-and being built by the agent workforce via the `feature` workflow.
+Working local authoring UI with canvas, inspectors, validation, save/load, source view, Greenhouse
+connector configuration, and one-way hosted-manifest preview. Direct manifest write-back and
+pipeline execution are not implemented.
