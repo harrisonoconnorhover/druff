@@ -17,9 +17,8 @@ import type {
  */
 function ConnectorConfigEditor({ node, onConfigChange }: ConfigCategoryEditorProps) {
   const connector = node.data.connectorId ? getConnector(node.data.connectorId) : undefined;
-  // Coerces the node's live `config` (`Record<string, unknown> | undefined`) into the string-keyed
-  // record `ConnectorConfigForm`/`validateConnectorConfig` expect, reusing `NodeConfigEditor`'s
-  // already-tested key/value mapping rather than duplicating the string-coercion logic here.
+  // Projects only editable string values into the connector form. Opaque config remains on the
+  // canonical node and is merged back untouched by the change handler below.
   const stringConfig = entriesToConfig(configToEntries(node.data.config));
 
   // Defensive only: `matches` below guarantees `connector` is defined whenever this editor is
@@ -32,7 +31,7 @@ function ConnectorConfigEditor({ node, onConfigChange }: ConfigCategoryEditorPro
       descriptor={connector}
       config={stringConfig}
       errors={validateConnectorConfig(connector, stringConfig)}
-      onChange={(key, value) => onConfigChange({ ...stringConfig, [key]: value })}
+      onChange={(key, value) => onConfigChange({ ...(node.data.config ?? {}), [key]: value })}
     />
   );
 }

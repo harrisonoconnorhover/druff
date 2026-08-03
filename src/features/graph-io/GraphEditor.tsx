@@ -8,23 +8,23 @@ import { PipelineCanvas } from "@/features/pipeline-canvas/PipelineCanvas";
 
 /**
  * Top-level container for DRUFF-5: owns which half (`canvas` | `source`) is showing, wires up
- * localStorage hydrate/autosave via `useGraphPersistence`, and renders `GraphToolbar` above either
- * `PipelineCanvas` or the read-only `SourceView`. `viewMode` is local `useState` — ephemeral UI
- * state, not graph data — per this ticket's Design.
+ * explicit Dander Open/Save via `useGraphPersistence`, and renders `GraphToolbar` above either
+ * `PipelineCanvas` or the read-only `SourceView`. `viewMode` is ephemeral UI state, not graph
+ * data.
  */
 export function GraphEditor() {
   const [viewMode, setViewMode] = useState<ViewMode>("canvas");
-  useGraphPersistence();
+  const persistence = useGraphPersistence();
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
-      <GraphToolbar viewMode={viewMode} onViewModeChange={setViewMode} />
+      <GraphToolbar viewMode={viewMode} onViewModeChange={setViewMode} persistence={persistence} />
       <div
         className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
         role="status"
       >
-        Local authoring preview only. Importing dander.yaml creates an editable Druff draft; Druff
-        does not deploy or write changes back to Dander.
+        PipelineGraph editor. Dander validates and writes an explicitly served graph file;
+        dander.yaml imports remain detached previews. Nothing here executes or deploys a pipeline.
       </div>
       <div className="min-h-0 flex-1">
         {viewMode === "canvas" ? <PipelineCanvas /> : <SourceView />}

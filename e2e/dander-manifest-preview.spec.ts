@@ -17,7 +17,7 @@ function canvasNode(page: Page, name: string) {
   return page.locator(".react-flow__node", { hasText: name });
 }
 
-test("imports dander.yaml as an editable, persistent local preview", async ({ page }) => {
+test("imports dander.yaml as an editable, detached local preview", async ({ page }) => {
   await page.goto("/");
 
   await page.getByLabel("Import Druff graph or Dander manifest file").setInputFiles({
@@ -28,12 +28,7 @@ test("imports dander.yaml as an editable, persistent local preview", async ({ pa
 
   await expect(canvasNode(page, "Ingest greenhouse_job_board")).toBeVisible();
   await expect(canvasNode(page, "Build stg_greenhouse__jobs")).toBeVisible();
-  await expect(page.getByText(/does not deploy or write changes back to Dander/)).toBeVisible();
-
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem("druff.graph.v1")))
-    .toContain("dander-manifest-preview");
-
-  await page.reload();
-  await expect(canvasNode(page, "Ingest greenhouse_job_board")).toBeVisible();
+  await expect(page.getByText("No Dander files or cloud resources were changed.")).toBeVisible();
+  await expect(page.getByText("Local draft", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save to Dander" })).toBeDisabled();
 });

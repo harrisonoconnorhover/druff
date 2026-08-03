@@ -10,15 +10,15 @@ export type ConfigEntry = {
 };
 
 /**
- * Expands a node's `config` into editable rows, one per own-enumerable entry, in the object's own
- * key order. `undefined` (a node with no config yet) yields no rows rather than throwing, since
- * `config` is optional on `PipelineNodeData`.
+ * Expands a node's string-valued `config` entries into editable rows, in object-key order.
+ * Dander permits arbitrary nested values in config/metadata records; those opaque values are not
+ * representable in this text-only editor, so they remain hidden and are preserved by the merge
+ * overload of `entriesToConfig` rather than being coerced to lossy strings.
  */
 export function configToEntries(config: Record<string, unknown> | undefined): ConfigEntry[] {
-  return Object.entries(config ?? {}).map(([key, value]) => ({
-    key,
-    value: typeof value === "string" ? value : String(value),
-  }));
+  return Object.entries(config ?? {}).flatMap(([key, value]) =>
+    typeof value === "string" ? [{ key, value }] : [],
+  );
 }
 
 /**
@@ -30,11 +30,22 @@ export function configToEntries(config: Record<string, unknown> | undefined): Co
  * their first occurrence, so editing a row's value (or renaming it to a still-unique key) doesn't
  * reshuffle the resulting entries on the next round trip through `configToEntries`.
  */
-export function entriesToConfig(entries: ConfigEntry[]): Record<string, string> {
-  const config: Record<string, string> = {};
+export function entriesToConfig(entries: ConfigEntry[]): Record<string, string>;
+export function entriesToConfig(
+  entries: ConfigEntry[],
+  original: Record<string, unknown>,
+): Record<string, unknown>;
+export function entriesToConfig(
+  entries: ConfigEntry[],
+  original: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const config: Record<string, unknown> = Object.fromEntries(
+    Object.entries(original).filter(([, value]) => typeof value !== "string"),
+  );
   for (const { key, value } of entries) {
     const trimmedKey = key.trim();
     if (trimmedKey === "") continue;
+    if (Object.hasOwn(original, trimmedKey) && typeof original[trimmedKey] !== "string") continue;
     config[trimmedKey] = value;
   }
   return config;

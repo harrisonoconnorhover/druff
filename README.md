@@ -1,11 +1,11 @@
 # Druff
 
-Front-end companion to **[Dander](../dander)** — a visual editor for building and visualizing
-pipeline drafts (drag/drop nodes, wire connections, configure sources/transforms/writes).
+Front-end companion to **[Dander](../dander)** — a visual editor for Dander's canonical
+`PipelineGraph` files (drag/drop nodes, wire connections, configure sources/transforms/writes).
 
-Today Druff can import a Dander version-1 `dander.yaml` and project its hosted pipelines onto the
-canvas. That projection is an editable **local draft**: Druff does not deploy it or write changes
-back to the manifest. Dander remains the execution and infrastructure boundary.
+Druff opens and saves one graph file through Dander's localhost API. Dander owns parsing,
+validation, conflict detection, and atomic filesystem writes. A version-1 `dander.yaml` can still
+be imported as a detached, one-way visualization; Druff never writes that manifest or deploys it.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
@@ -33,7 +33,17 @@ pnpm install
 pnpm dev              # http://localhost:3000
 ```
 
-To visualize a current Dander project, choose **Import graph or dander.yaml** and select its
+In a second terminal, select the graph file Dander may expose:
+
+```bash
+dander graph serve --file /absolute/path/to/pipeline.yaml
+```
+
+Then choose **Open from Dander**. Druff uses explicit Save, shows unsaved/conflict state, and will
+not overwrite a file that changed after it was opened. Graph YAML formatting and comments may be
+normalized because Dander writes its canonical model.
+
+To visualize a hosted Dander project manifest, choose **Import graph or dander.yaml** and select its
 `dander.yaml`. Druff draws each schedule, source, and selected model. Exported `.druff.yaml`/JSON
 files are editor drafts, not deployable Dander manifests.
 
@@ -99,6 +109,6 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 
 ## Status
 
-Working local authoring UI with canvas, inspectors, validation, save/load, source view, Greenhouse
-connector configuration, and one-way hosted-manifest preview. Direct manifest write-back and
-pipeline execution are not implemented.
+Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
+validation, source view, Greenhouse connector configuration, and one-way hosted-manifest preview.
+PipelineGraph execution, manifest write-back, and deployment are not implemented.

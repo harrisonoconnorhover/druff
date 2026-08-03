@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { EXAMPLE_GRAPH } from "@/lib/pipeline-graph/__fixtures__/example-graph";
 import {
+  DanderApiGraphPersistence,
+  GraphPersistenceError,
   LocalStorageGraphPersistence,
   type GraphSnapshot,
 } from "@/lib/persistence/graph-persistence";
@@ -133,5 +135,76 @@ describe("LocalStorageGraphPersistence", () => {
     const loggedText = warn.mock.calls.flat().join(" ");
     expect(loggedText).not.toContain("sk-should-not-appear");
     warn.mockRestore();
+  });
+});
+
+describe("DanderApiGraphPersistence", () => {
+  it("opens a validated graph and retains Dander's quoted ETag revision", async () => {
+    const fetchGraph = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(EXAMPLE_GRAPH), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ETag: '"revision-1"' },
+      }),
+    );
+    const persistence = new DanderApiGraphPersistence("http://127.0.0.1:8765/", fetchGraph);
+
+    await expect(persistence.load()).resolves.toEqual({
+      graph: EXAMPLE_GRAPH,
+      revision: '"revision-1"',
+    });
+    expect(fetchGraph).toHaveBeenCalledWith("http://127.0.0.1:8765/v1/graph", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+  });
+
+  it("saves JSON conditionally with the exact loaded revision", async () => {
+    const fetchGraph = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify(EXAMPLE_GRAPH), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ETag: '"revision-2"' },
+      }),
+    );
+    const persistence = new DanderApiGraphPersistence("http://127.0.0.1:8765", fetchGraph);
+
+    await expect(persistence.save(EXAMPLE_GRAPH, '"revision-1"')).resolves.toEqual({
+      graph: EXAMPLE_GRAPH,
+      revision: '"revision-2"',
+    });
+    expect(fetchGraph).toHaveBeenCalledWith(
+      "http://127.0.0.1:8765/v1/graph",
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({ "If-Match": '"revision-1"' }),
+        body: JSON.stringify(EXAMPLE_GRAPH),
+      }),
+    );
+  });
+
+  it("surfaces a stale revision as a typed conflict", async () => {
+    const fetchGraph = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ error: "The graph changed elsewhere." }), {
+        status: 412,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const persistence = new DanderApiGraphPersistence("http://127.0.0.1:8765", fetchGraph);
+
+    const failure = await persistence.save(EXAMPLE_GRAPH, '"stale"').catch((error) => error);
+
+    expect(failure).toBeInstanceOf(GraphPersistenceError);
+    expect(failure).toMatchObject({ conflict: true, message: "The graph changed elsewhere." });
+  });
+
+  it("fails loud rather than stripping an unsupported graph response", async () => {
+    const fetchGraph = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ ...EXAMPLE_GRAPH, future_contract: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ETag: '"revision-1"' },
+      }),
+    );
+    const persistence = new DanderApiGraphPersistence("http://127.0.0.1:8765", fetchGraph);
+
+    await expect(persistence.load()).rejects.toThrow(/cannot preserve/i);
   });
 });

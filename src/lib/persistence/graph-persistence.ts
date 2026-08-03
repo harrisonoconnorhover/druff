@@ -19,24 +19,88 @@ export type GraphSnapshot = {
   positions: GraphLayout;
 };
 
+/** A canonical graph opened from Dander and the exact HTTP revision required for its next save. */
+export type GraphDocument = {
+  graph: PipelineGraph;
+  revision: string;
+};
+
 /**
- * The persistence seam (`steering/02-engineering.md`: depend on abstractions, not a concrete
- * store). Today's only implementation is `LocalStorageGraphPersistence`; a future Dander-backed or
- * filesystem-backed store plugs in here without any caller (`useGraphPersistence`, `GraphToolbar`)
- * changing.
+ * Async persistence seam for canonical graphs. Dander's local API is the authority: implementations
+ * return a revision on open and require that revision on save so a browser cannot overwrite a file
+ * that changed elsewhere.
  */
 export interface GraphPersistence {
-  /** Persists `snapshot` as the current local graph. Environment failures (quota exceeded,
-   * localStorage disabled/private mode) are allowed to throw — a save failure is a real condition
-   * the caller should surface loudly, never swallow. */
-  save(snapshot: GraphSnapshot): void;
-  /** Returns the last-saved snapshot, or `null` if there is none, it's unparseable, it's a
-   * different envelope version, or its `graph` fails DRUFF-4's schema. Every one of those cases
-   * degrades to `null` (caller falls back to the seed graph) rather than throwing, since a
-   * corrupt/stale local blob must never crash the editor. */
-  load(): GraphSnapshot | null;
-  /** Removes the stored snapshot entirely. */
-  clear(): void;
+  load(): Promise<GraphDocument>;
+  save(graph: PipelineGraph, revision: string): Promise<GraphDocument>;
+}
+
+export class GraphPersistenceError extends Error {
+  readonly conflict: boolean;
+
+  constructor(message: string, options: { conflict?: boolean } = {}) {
+    super(message);
+    this.name = "GraphPersistenceError";
+    this.conflict = options.conflict ?? false;
+  }
+}
+
+type FetchGraph = typeof fetch;
+
+/** HTTP persistence backed by `dander graph serve --file ...`. */
+export class DanderApiGraphPersistence implements GraphPersistence {
+  private readonly endpoint: string;
+  private readonly fetchGraph: FetchGraph;
+
+  constructor(
+    baseUrl = "http://127.0.0.1:8765",
+    fetchGraph: FetchGraph = globalThis.fetch.bind(globalThis),
+  ) {
+    this.endpoint = `${baseUrl.replace(/\/$/, "")}/v1/graph`;
+    this.fetchGraph = fetchGraph;
+  }
+
+  async load(): Promise<GraphDocument> {
+    const response = await this.fetchGraph(this.endpoint, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    return this.readDocument(response);
+  }
+
+  async save(graph: PipelineGraph, revision: string): Promise<GraphDocument> {
+    const response = await this.fetchGraph(this.endpoint, {
+      method: "PUT",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": revision,
+      },
+      body: JSON.stringify(graph),
+    });
+    return this.readDocument(response);
+  }
+
+  private async readDocument(response: Response): Promise<GraphDocument> {
+    if (!response.ok) {
+      const message = await responseError(response);
+      throw new GraphPersistenceError(message, { conflict: response.status === 412 });
+    }
+    const revision = response.headers.get("ETag");
+    if (!revision) {
+      throw new GraphPersistenceError("Dander did not return a graph revision (ETag).", {
+        conflict: false,
+      });
+    }
+    const result = PipelineGraphSchema.safeParse(await response.json());
+    if (!result.success) {
+      throw new GraphPersistenceError(
+        "Dander returned a graph this Druff version cannot preserve. Upgrade Druff before editing.",
+        { conflict: false },
+      );
+    }
+    return { graph: result.data, revision };
+  }
 }
 
 /**
@@ -50,7 +114,7 @@ export interface GraphPersistence {
  * corrupt blob can't leak node `config` (which may carry connector parameters) into the console
  * (`steering/01-security.md`).
  */
-export class LocalStorageGraphPersistence implements GraphPersistence {
+export class LocalStorageGraphPersistence {
   private readonly storage: Storage;
 
   constructor(storage: Storage = window.localStorage) {
@@ -145,4 +209,14 @@ function isGraphLayout(value: unknown): value is GraphLayout {
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function responseError(response: Response): Promise<string> {
+  try {
+    const payload: unknown = await response.json();
+    if (isPlainObject(payload) && typeof payload.error === "string") return payload.error;
+  } catch {
+    // Fall through to the status-only message. Never echo a raw response body.
+  }
+  return `Dander graph request failed (${response.status} ${response.statusText}).`;
 }

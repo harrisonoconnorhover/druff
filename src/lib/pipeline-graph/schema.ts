@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 /**
- * Zod schemas for Druff's current pipeline-graph draft shape. Dander's executable hosted contract
- * is `dander.yaml`, while its separate experimental graph model has evolved beyond this UI. The
- * strict boundary objects below therefore reject newer graph fields Druff cannot preserve instead
- * of silently stripping them. See `steering/00-project-overview.md`.
+ * Zod schemas for Dander's canonical `PipelineGraph` contract. Druff keeps the complete parsed
+ * model as its backing document and patches only fields the editor owns. Strict boundary objects
+ * therefore reject newer graph fields Druff cannot yet preserve instead of silently stripping
+ * them. See `steering/00-project-overview.md`.
  *
  * Zod does **structural/shape** validation only. Dander's *semantic* checks (`graph_ops`: unique
  * node ids, dangling edges, cycles, field-wiring) are explicitly out of scope here — see this
@@ -19,13 +19,35 @@ import { z } from "zod";
  */
 const metadataSchema = z.record(z.string(), z.unknown()).default({});
 
+/** Generic data-quality tests declared on a node field (Dander's `FieldTest`). */
+export const FieldTestKindSchema = z.enum([
+  "not_null",
+  "unique",
+  "accepted_values",
+  "relationships",
+]);
+export type FieldTestKind = z.infer<typeof FieldTestKindSchema>;
+
+export const FieldTestSchema = z
+  .object({
+    kind: FieldTestKindSchema,
+    values: z.array(z.unknown()).default([]),
+    to: z.string().nullable().default(null),
+    field: z.string().nullable().default(null),
+    metadata: metadataSchema,
+  })
+  .strict();
+export type FieldTest = z.infer<typeof FieldTestSchema>;
+
 /** A single declared field on a node's schema (Dander's `NodeField`). */
 export const NodeFieldSchema = z
   .object({
     name: z.string(),
     type: z.string(),
+    cast_to: z.string().nullable().optional(),
     nullable: z.boolean().default(true),
     description: z.string().nullable().default(null),
+    tests: z.array(FieldTestSchema).optional(),
     metadata: metadataSchema,
   })
   .strict();
@@ -41,13 +63,43 @@ export type NodeField = z.infer<typeof NodeFieldSchema>;
 function withConfigParamsAlias(input: unknown): unknown {
   if (input !== null && typeof input === "object" && !Array.isArray(input)) {
     const record = input as Record<string, unknown>;
-    if ("params" in record) {
-      const { params, ...rest } = record;
-      return "config" in record ? rest : { ...rest, config: params };
+    let normalized = { ...record };
+    if ("params" in normalized) {
+      const { params, ...rest } = normalized;
+      normalized = "config" in normalized ? rest : { ...rest, config: params };
     }
+    for (const key of ["trigger", "cursor", "visual"]) {
+      if (normalized[key] === null) delete normalized[key];
+    }
+    return normalized;
   }
   return input;
 }
+
+export const CursorKindSchema = z.enum(["timestamp", "sequence", "opaque_token"]);
+export type CursorKind = z.infer<typeof CursorKindSchema>;
+
+export const CursorStrategySchema = z
+  .object({
+    field: z.string(),
+    kind: CursorKindSchema,
+    params: z.record(z.string(), z.unknown()).default({}),
+    metadata: metadataSchema,
+  })
+  .strict();
+export type CursorStrategy = z.infer<typeof CursorStrategySchema>;
+
+export const PositionSchema = z.object({ x: z.number(), y: z.number() }).strict();
+export type Position = z.infer<typeof PositionSchema>;
+
+export const NodeVisualSchema = z
+  .object({
+    position: PositionSchema.nullable().default(null),
+    color: z.string().nullable().default(null),
+    icon: z.string().nullable().default(null),
+  })
+  .strict();
+export type NodeVisual = z.infer<typeof NodeVisualSchema>;
 
 /** A single node in a pipeline graph (Dander's `Node`). */
 export const PipelineNodeSchema = z.preprocess(
@@ -59,13 +111,16 @@ export const PipelineNodeSchema = z.preprocess(
       name: z.string(),
       config: z.record(z.string(), z.unknown()).default({}),
       fields: z.array(NodeFieldSchema).default([]),
+      trigger: z.lazy(() => TriggerSchema).optional(),
+      cursor: CursorStrategySchema.optional(),
+      visual: NodeVisualSchema.optional(),
     })
     .strict(),
 );
 export type PipelineNode = z.infer<typeof PipelineNodeSchema>;
 
 /** The closed set of transformation kinds a `Transformation` may declare (Dander's `TransformationKind`). */
-export const TransformationKindSchema = z.enum(["direct", "expression", "constant"]);
+export const TransformationKindSchema = z.enum(["direct", "expression", "constant", "custom_code"]);
 export type TransformationKind = z.infer<typeof TransformationKindSchema>;
 
 /**
@@ -80,6 +135,8 @@ export const TransformationSchema = z
     kind: TransformationKindSchema.default("direct"),
     expression: z.string().nullable().default(null),
     constant: z.unknown().default(null),
+    function: z.string().nullable().optional(),
+    arguments: z.record(z.string(), z.unknown()).optional(),
     inputs: z.array(z.string()).default([]),
     metadata: metadataSchema,
   })
@@ -87,12 +144,14 @@ export const TransformationSchema = z
 export type Transformation = z.infer<typeof TransformationSchema>;
 
 /** A single field-to-field lineage mapping on an edge, optionally transformed (Dander's `FieldMapping`). */
-export const FieldMappingSchema = z.object({
-  source: z.string().nullable().default(null),
-  target: z.string(),
-  transformation: TransformationSchema.nullable().default(null),
-  metadata: metadataSchema,
-});
+export const FieldMappingSchema = z
+  .object({
+    source: z.string().nullable().default(null),
+    target: z.string(),
+    transformation: TransformationSchema.nullable().default(null),
+    metadata: metadataSchema,
+  })
+  .strict();
 export type FieldMapping = z.infer<typeof FieldMappingSchema>;
 
 /** The closed set of join kinds a `JoinSpec` may declare (Dander's `JoinType`). */
@@ -101,18 +160,17 @@ export type JoinType = z.infer<typeof JoinTypeSchema>;
 
 /** One equality key pairing in a `JoinSpec` (Dander's `JoinKeyPair`): `left` names a field on the
  * edge's `from` node, `right` names a field on the edge's `to` node. */
-export const JoinKeyPairSchema = z.object({
-  left: z.string(),
-  right: z.string(),
-});
+export const JoinKeyPairSchema = z.object({ left: z.string(), right: z.string() }).strict();
 export type JoinKeyPair = z.infer<typeof JoinKeyPairSchema>;
 
 /** A declarative join specification on a connection that combines two sources (Dander's `JoinSpec`). */
-export const JoinSpecSchema = z.object({
-  type: JoinTypeSchema,
-  keys: z.array(JoinKeyPairSchema).min(1),
-  metadata: metadataSchema,
-});
+export const JoinSpecSchema = z
+  .object({
+    type: JoinTypeSchema,
+    keys: z.array(JoinKeyPairSchema).min(1),
+    metadata: metadataSchema,
+  })
+  .strict();
 export type JoinSpec = z.infer<typeof JoinSpecSchema>;
 
 /**
@@ -146,13 +204,15 @@ function withNullJoinOmitted(input: unknown): unknown {
  */
 export const PipelineEdgeSchema = z.preprocess(
   withNullJoinOmitted,
-  z.object({
-    from: z.string(),
-    to: z.string(),
-    metadata: metadataSchema,
-    mappings: z.array(FieldMappingSchema).default([]),
-    join: JoinSpecSchema.optional(),
-  }),
+  z
+    .object({
+      from: z.string(),
+      to: z.string(),
+      metadata: metadataSchema,
+      mappings: z.array(FieldMappingSchema).default([]),
+      join: JoinSpecSchema.optional(),
+    })
+    .strict(),
 );
 export type PipelineEdge = z.infer<typeof PipelineEdgeSchema>;
 
@@ -174,16 +234,18 @@ export type TriggerKind = z.infer<typeof TriggerKindSchema>;
  * Opaque and inert throughout Druff: `cron` is stored as an authored string and never parsed or
  * scheduled client-side, matching the "Druff never executes user code" non-goal.
  */
-export const TriggerSchema = z.object({
-  kind: TriggerKindSchema,
-  /** Opaque cron expression (`schedule` kind). Never evaluated in the browser. */
-  cron: z.string().nullable().default(null),
-  /** Optional opaque external-event name (`manual` kind). */
-  event: z.string().nullable().default(null),
-  /** Upstream node ids by name only (`dependency` kind). */
-  depends_on: z.array(z.string()).default([]),
-  metadata: metadataSchema,
-});
+export const TriggerSchema = z
+  .object({
+    kind: TriggerKindSchema,
+    /** Opaque cron expression (`schedule` kind). Never evaluated in the browser. */
+    cron: z.string().nullable().default(null),
+    /** Optional opaque external-event name (`manual` kind). */
+    event: z.string().nullable().default(null),
+    /** Upstream node ids by name only (`dependency` kind). */
+    depends_on: z.array(z.string()).default([]),
+    metadata: metadataSchema,
+  })
+  .strict();
 export type Trigger = z.infer<typeof TriggerSchema>;
 
 /** The closed set of write modes Dander's `WriterConfig.write_mode` may declare (Dander's
@@ -203,14 +265,16 @@ export type PartitioningGranularity = z.infer<typeof PartitioningGranularitySche
  * config category's `validateWriter` (DRUFF-17), not this schema, so a partially-authored
  * destination still parses on read rather than throwing.
  */
-export const DestinationSpecSchema = z.object({
-  project: z.string().nullable().default(null),
-  dataset: z.string().default(""),
-  table: z.string().default(""),
-  /** Ordered business-key column names — required non-empty for scd1/scd2/incremental, not
-   *  snapshot (`validateWriter`'s job, not this schema's). */
-  business_key: z.array(z.string()).default([]),
-});
+export const DestinationSpecSchema = z
+  .object({
+    project: z.string().nullable().default(null),
+    dataset: z.string().default(""),
+    table: z.string().default(""),
+    /** Ordered business-key column names — required non-empty for scd1/scd2/incremental, not
+     *  snapshot (`validateWriter`'s job, not this schema's). */
+    business_key: z.array(z.string()).default([]),
+  })
+  .strict();
 export type DestinationSpec = z.infer<typeof DestinationSpecSchema>;
 
 /**
@@ -218,11 +282,13 @@ export type DestinationSpec = z.infer<typeof DestinationSpecSchema>;
  * value — BigQuery ingestion-time partitioning — distinct from `partitioning` itself being absent
  * (no partitioning at all) on the parent `WriterConfigSchema`.
  */
-export const PartitioningSpecSchema = z.object({
-  field: z.string().nullable().default(null),
-  granularity: PartitioningGranularitySchema.default("day"),
-  require_partition_filter: z.boolean().default(false),
-});
+export const PartitioningSpecSchema = z
+  .object({
+    field: z.string().nullable().default(null),
+    granularity: PartitioningGranularitySchema.default("day"),
+    require_partition_filter: z.boolean().default(false),
+  })
+  .strict();
 export type PartitioningSpec = z.infer<typeof PartitioningSpecSchema>;
 
 /**
@@ -237,22 +303,40 @@ export type PartitioningSpec = z.infer<typeof PartitioningSpecSchema>;
  * (dataset/table/column names) — never a secret (`steering/01-security.md`) — and none of it is
  * ever executed or evaluated client-side.
  */
-export const WriterConfigSchema = z.object({
-  write_mode: WriteModeSchema,
-  destination: DestinationSpecSchema,
-  cursor_field: z.string().nullable().default(null),
-  partitioning: PartitioningSpecSchema.nullable().default(null),
-  /** Ordered clustering column names — capped at 4, no duplicates (`validateWriter`'s job). */
-  clustering: z.array(z.string()).default([]),
-});
+export const WriterConfigSchema = z
+  .object({
+    write_mode: WriteModeSchema,
+    destination: DestinationSpecSchema,
+    cursor_field: z.string().nullable().default(null),
+    partitioning: PartitioningSpecSchema.nullable().default(null),
+    /** Ordered clustering column names — capped at 4, no duplicates (`validateWriter`'s job). */
+    clustering: z.array(z.string()).default([]),
+    max_batch_rows: z.number().int().positive().max(100_000).optional(),
+    schema_evolution: z.enum(["strict", "additive"]).optional(),
+    transport: z.enum(["load_job", "storage_write"]).optional(),
+  })
+  .strict();
 export type WriterConfig = z.infer<typeof WriterConfigSchema>;
 
 /** The full pipeline graph: a named collection of nodes and edges (Dander's `PipelineGraph`). */
-export const PipelineGraphSchema = z
-  .object({
-    name: z.string(),
-    nodes: z.array(PipelineNodeSchema).default([]),
-    edges: z.array(PipelineEdgeSchema).default([]),
-  })
-  .strict();
+function withNullGraphTriggerOmitted(input: unknown): unknown {
+  if (input !== null && typeof input === "object" && !Array.isArray(input)) {
+    const record = { ...(input as Record<string, unknown>) };
+    if (record.trigger === null) delete record.trigger;
+    return record;
+  }
+  return input;
+}
+
+export const PipelineGraphSchema = z.preprocess(
+  withNullGraphTriggerOmitted,
+  z
+    .object({
+      name: z.string(),
+      nodes: z.array(PipelineNodeSchema).default([]),
+      edges: z.array(PipelineEdgeSchema).default([]),
+      trigger: TriggerSchema.optional(),
+    })
+    .strict(),
+);
 export type PipelineGraph = z.infer<typeof PipelineGraphSchema>;

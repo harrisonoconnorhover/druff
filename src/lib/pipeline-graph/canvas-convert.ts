@@ -3,6 +3,7 @@ import type {
   PipelineEdge,
   PipelineGraph,
   PipelineNode as GraphNode,
+  Trigger,
 } from "@/lib/pipeline-graph/schema";
 import {
   kindForType,
@@ -27,18 +28,11 @@ const FALLBACK_LAYOUT_Y = 80;
  * access, no network, so DRUFF-5 can compose them and tests can exercise them end-to-end without
  * rendering.
  *
- * **Positions & app-only fields (deliberate, documented).** Dander's graph shape has no position
- * field, and the "Contract with Dander" stays clean only if layout never gets smuggled into a
- * node's `config`/`metadata`. So `canvasToGraph` drops `position`, `selected`, `dragging`, and
- * every other React-Flow-only field; the on-disk graph is layout-free. Layout is instead an
- * app-only sidecar (`GraphLayout`) that `extractLayout` pulls out and a caller (DRUFF-5) persists
- * alongside the graph. `graphToCanvas(graph, layout?)` re-applies a supplied layout; a node absent
- * from it (e.g. a bare Dander graph imported with no Druff sidecar) falls back to a deterministic
- * left-to-right placement by graph node order, so import is total and stable. This makes both
- * round trips well-defined:
- * - `canvasToGraph ∘ graphToCanvas` = identity on the **graph** (positions irrelevant).
- * - `graphToCanvas(canvasToGraph(nodes, edges), extractLayout(nodes))` = identity on the
- *   **canvas**, positions included.
+ * **Positions & app-only fields.** Canonical layout lives in Dander's `Node.visual.position`.
+ * React Flow-only state (`selected`, `dragging`, dimensions) is never serialized. A graph without
+ * canonical positions receives deterministic fallback layout; saving it untouched preserves the
+ * absence of `visual`, while moving a node authors `visual.position`. `GraphLayout` remains only
+ * as backward-compatible input for local drafts and manifest previews.
  */
 
 /**
@@ -52,12 +46,15 @@ export function canvasToGraph(
   nodes: Node<PipelineNodeData>[],
   edges: Edge<PipelineEdgeData>[],
   name: string = DEFAULT_GRAPH_NAME,
+  trigger?: Trigger,
 ): PipelineGraph {
-  return {
+  const graph: PipelineGraph = {
     name,
     nodes: nodes.map(nodeToGraphNode),
     edges: edges.map(edgeToGraphEdge),
   };
+  if (trigger) graph.trigger = trigger;
+  return graph;
 }
 
 function nodeToGraphNode(node: Node<PipelineNodeData>): GraphNode {
@@ -67,13 +64,26 @@ function nodeToGraphNode(node: Node<PipelineNodeData>): GraphNode {
   // to `data.type` if the id doesn't resolve (e.g. a stale/unregistered connector id), so a node
   // never silently loses its type on save.
   const connector = node.data.connectorId ? getConnector(node.data.connectorId) : undefined;
-  return {
+  const graphNode: GraphNode = {
+    ...(node.data.canonical ?? {}),
     id: node.id,
     type: connector?.danderType ?? node.data.type,
     name: node.data.name,
     config: node.data.config ?? {},
     fields: node.data.fields ?? [],
   };
+  const loadedPosition = node.data.loadedPosition;
+  const positionChanged =
+    loadedPosition !== undefined &&
+    (loadedPosition.x !== node.position.x || loadedPosition.y !== node.position.y);
+  if (node.data.canonical === undefined || positionChanged) {
+    graphNode.visual = {
+      position: node.position,
+      color: node.data.canonical?.visual?.color ?? null,
+      icon: node.data.canonical?.visual?.icon ?? null,
+    };
+  }
+  return graphNode;
 }
 
 function edgeToGraphEdge(edge: Edge<PipelineEdgeData>): PipelineEdge {
@@ -81,13 +91,14 @@ function edgeToGraphEdge(edge: Edge<PipelineEdgeData>): PipelineEdge {
   // so reading it against the typed `PipelineEdgeData` shape is sufficient here; Zod parsing
   // happens where text actually crosses the contract (`serialize.ts`).
   const data = edge.data;
-  return {
+  const graphEdge: PipelineEdge = {
     from: edge.source,
     to: edge.target,
     metadata: data?.metadata ?? {},
     mappings: data?.mappings ?? [],
-    join: data?.join,
   };
+  if (data?.join) graphEdge.join = data.join;
+  return graphEdge;
 }
 
 /**
@@ -98,11 +109,12 @@ function edgeToGraphEdge(edge: Edge<PipelineEdgeData>): PipelineEdge {
 export function graphToCanvas(
   graph: PipelineGraph,
   layout?: GraphLayout,
-): { nodes: Node<PipelineNodeData>[]; edges: Edge<PipelineEdgeData>[] } {
+): { nodes: Node<PipelineNodeData>[]; edges: Edge<PipelineEdgeData>[]; trigger?: Trigger } {
   const fallbackLayout = computeDefaultLayout(graph);
   return {
     nodes: graph.nodes.map((node) => graphNodeToCanvasNode(node, layout, fallbackLayout)),
     edges: graph.edges.map(graphEdgeToCanvasEdge),
+    trigger: graph.trigger,
   };
 }
 
@@ -111,7 +123,7 @@ function graphNodeToCanvasNode(
   layout: GraphLayout | undefined,
   fallbackLayout: GraphLayout,
 ): Node<PipelineNodeData> {
-  const position = layout?.[node.id] ?? fallbackLayout[node.id];
+  const position = node.visual?.position ?? layout?.[node.id] ?? fallbackLayout[node.id];
   // Inverse of `nodeToGraphNode`'s connector mapping: a `type` matching a registered connector's
   // `danderType` re-derives `connectorId`, so a saved Greenhouse node is recognized as one again on
   // load (round-trips through `canvasToGraph`/`graphToCanvas`, not just a fresh drag-drop).
@@ -133,6 +145,8 @@ function graphNodeToCanvasNode(
       ...(connector && { connectorId: connector.id }),
       config: node.config,
       fields: node.fields,
+      canonical: node,
+      loadedPosition: position,
     },
   };
 }

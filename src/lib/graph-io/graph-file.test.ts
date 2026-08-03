@@ -71,12 +71,11 @@ pipelines:
     }
   });
 
-  it("rejects a graph carrying newer Dander fields Druff cannot safely preserve", () => {
+  it("rejects a graph carrying unknown fields Druff cannot safely preserve", () => {
     const result = parseImportedFile(
       `
 name: newer-graph
-trigger:
-  kind: manual
+future_contract: unsupported
 nodes: []
 edges: []
 `,

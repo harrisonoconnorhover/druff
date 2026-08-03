@@ -1,73 +1,158 @@
 "use client";
 
-import { useEffect } from "react";
-import { useGraphStore } from "@/lib/graph-store";
-import { canvasToGraph, extractLayout, graphToCanvas } from "@/lib/pipeline-graph";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useGraphStore, type GraphState } from "@/lib/graph-store";
+import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph";
 import {
-  LocalStorageGraphPersistence,
+  DanderApiGraphPersistence,
+  GraphPersistenceError,
   type GraphPersistence,
 } from "@/lib/persistence/graph-persistence";
 
-/** Debounce delay (ms) between a store change and the resulting autosave, so a burst of drag/edit
- * events (every pointer-move while dragging a node) doesn't write to localStorage on every frame. */
-const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 500;
+export type GraphPersistenceStatus =
+  "disconnected" | "loading" | "clean" | "dirty" | "saving" | "conflict" | "error";
+
+export type GraphPersistenceControls = {
+  status: GraphPersistenceStatus;
+  error: string | null;
+  open: () => Promise<void>;
+  save: () => Promise<void>;
+  detach: () => void;
+};
 
 export type UseGraphPersistenceOptions = {
-  /** Injectable persistence seam — defaults to the real `localStorage`-backed implementation.
-   * Tests supply a fake so no real browser storage is touched. */
+  /** Injectable seam for tests; defaults to Dander's localhost single-file graph API. */
   persistence?: GraphPersistence;
-  /** Autosave debounce delay in ms; overridable for tests. */
-  debounceMs?: number;
 };
 
 /**
- * Connects the graph store (DRUFF-1) to local persistence (this ticket): on mount, hydrates the
- * store from the last-saved snapshot (a no-op if there is none — the store keeps its seed graph,
- * which is exactly what a fresh reload would show anyway); thereafter, debounced-autosaves the
- * current canvas as a `{ graph, positions }` snapshot on every store change.
- *
- * Deliberately subscribes to the store **imperatively** (`useGraphStore.subscribe`, not a reactive
- * selector) rather than depending on `nodes`/`edges` in a `useEffect` — that would mean either
- * calling `setState` synchronously inside an effect to sequence "hydrate, then start
- * autosaving" (cascading-render territory), or racing the very first autosave against
- * hydration's own store update. Subscribing directly sidesteps both: hydration's `setGraph` call
- * and every later store change are just callbacks on the same subscription, in the order they
- * actually happen, with no derived React state needed to sequence them.
- *
- * Contains no JSX; mount once per editor instance (`GraphEditor`).
+ * Explicit Open/Save controller for a canonical Dander graph. There is intentionally no server
+ * autosave: every write carries the revision returned by Open/Save and a stale revision becomes a
+ * visible conflict rather than an overwrite. Local file imports detach from the server document.
  */
-export function useGraphPersistence(options: UseGraphPersistenceOptions = {}): void {
-  useEffect(() => {
-    // Resolved inside the effect (not the render body) so the real `LocalStorageGraphPersistence`
-    // default is only ever constructed client-side, post-mount — never during Next.js's
-    // server-side render of this `'use client'` component, where `window` doesn't exist.
-    const persistence = options.persistence ?? new LocalStorageGraphPersistence();
-    const debounceMs = options.debounceMs ?? DEFAULT_AUTOSAVE_DEBOUNCE_MS;
+export function useGraphPersistence(
+  options: UseGraphPersistenceOptions = {},
+): GraphPersistenceControls {
+  const persistenceRef = useRef<GraphPersistence | null>(null);
+  if (persistenceRef.current === null) {
+    persistenceRef.current = options.persistence ?? new DanderApiGraphPersistence();
+  }
 
-    const snapshot = persistence.load();
-    if (snapshot) {
-      const restored = graphToCanvas(snapshot.graph, snapshot.positions);
-      useGraphStore.getState().setGraph(restored.nodes, restored.edges, snapshot.graph.name);
+  const revisionRef = useRef<string | null>(null);
+  const baselineRef = useRef<string | null>(null);
+  const lastSemanticRef = useRef<string | null>(null);
+  const attachedRef = useRef(false);
+  const applyingRemoteRef = useRef(false);
+  const changeVersionRef = useRef(0);
+  const [status, setStatus] = useState<GraphPersistenceStatus>("disconnected");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(
+    () =>
+      useGraphStore.subscribe((state) => {
+        if (!attachedRef.current || applyingRemoteRef.current) return;
+        const semanticGraph = serializeGraphState(state);
+        if (semanticGraph === lastSemanticRef.current) return;
+        lastSemanticRef.current = semanticGraph;
+        changeVersionRef.current += 1;
+        setStatus(semanticGraph === baselineRef.current ? "clean" : "dirty");
+        setError(null);
+      }),
+    [],
+  );
+
+  const open = useCallback(async () => {
+    setStatus("loading");
+    setError(null);
+    try {
+      const document = await persistenceRef.current!.load();
+      const restored = graphToCanvas(document.graph);
+      applyingRemoteRef.current = true;
+      useGraphStore
+        .getState()
+        .setGraph(restored.nodes, restored.edges, document.graph.name, document.graph.trigger);
+      applyingRemoteRef.current = false;
+      revisionRef.current = document.revision;
+      attachedRef.current = true;
+      changeVersionRef.current = 0;
+      baselineRef.current = serializeGraphState(useGraphStore.getState());
+      lastSemanticRef.current = baselineRef.current;
+      setStatus("clean");
+    } catch (cause) {
+      applyingRemoteRef.current = false;
+      attachedRef.current = false;
+      revisionRef.current = null;
+      baselineRef.current = null;
+      lastSemanticRef.current = null;
+      setStatus("error");
+      setError(describeError(cause));
+    }
+  }, []);
+
+  const save = useCallback(async () => {
+    const revision = revisionRef.current;
+    if (!attachedRef.current || revision === null) {
+      setStatus("error");
+      setError("Open a graph from Dander before saving.");
+      return;
     }
 
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = useGraphStore.subscribe((state) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        persistence.save({
-          graph: canvasToGraph(state.nodes, state.edges, state.graphName),
-          positions: extractLayout(state.nodes),
-        });
-      }, debounceMs);
-    });
+    const state = useGraphStore.getState();
+    const graph = canvasToGraph(state.nodes, state.edges, state.graphName, state.graphTrigger);
+    const savedChangeVersion = changeVersionRef.current;
+    setStatus("saving");
+    setError(null);
 
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      unsubscribe();
-    };
-    // Mount-only: `persistence`/`debounceMs` aren't expected to change for a given `GraphEditor`
-    // instance, and re-running this on every render would re-hydrate mid-session, clobbering
-    // in-progress edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try {
+      const document = await persistenceRef.current!.save(graph, revision);
+      revisionRef.current = document.revision;
+      baselineRef.current = JSON.stringify(document.graph);
+      if (changeVersionRef.current === savedChangeVersion) {
+        const restored = graphToCanvas(document.graph);
+        applyingRemoteRef.current = true;
+        useGraphStore
+          .getState()
+          .setGraph(restored.nodes, restored.edges, document.graph.name, document.graph.trigger);
+        applyingRemoteRef.current = false;
+        baselineRef.current = serializeGraphState(useGraphStore.getState());
+        lastSemanticRef.current = baselineRef.current;
+        setStatus("clean");
+      } else {
+        // An edit arrived while the request was in flight. The server saved the captured graph;
+        // keep the newer canvas edit dirty against the returned revision instead of clobbering it.
+        const current = serializeGraphState(useGraphStore.getState());
+        lastSemanticRef.current = current;
+        setStatus(current === baselineRef.current ? "clean" : "dirty");
+      }
+    } catch (cause) {
+      applyingRemoteRef.current = false;
+      setStatus(cause instanceof GraphPersistenceError && cause.conflict ? "conflict" : "error");
+      setError(describeError(cause));
+    }
   }, []);
+
+  const detach = useCallback(() => {
+    attachedRef.current = false;
+    revisionRef.current = null;
+    baselineRef.current = null;
+    lastSemanticRef.current = null;
+    changeVersionRef.current = 0;
+    setStatus("disconnected");
+    setError(null);
+  }, []);
+
+  return { status, error, open, save, detach };
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof TypeError) {
+    return "Could not reach Dander. Start `dander graph serve --file <graph.yaml>` and try again.";
+  }
+  return error instanceof Error ? error.message : "Dander graph request failed.";
+}
+
+function serializeGraphState(state: GraphState): string {
+  return JSON.stringify(
+    canvasToGraph(state.nodes, state.edges, state.graphName, state.graphTrigger),
+  );
 }

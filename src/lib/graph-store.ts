@@ -9,7 +9,7 @@ import {
   type Node,
   type NodeChange,
 } from "@xyflow/react";
-import type { PipelineNodeData, PipelineEdgeData } from "@/lib/pipeline-graph";
+import type { PipelineNodeData, PipelineEdgeData, Trigger } from "@/lib/pipeline-graph";
 
 /**
  * Single source of truth for the canvas graph (nodes + edges). Owns exactly two things: the
@@ -21,6 +21,8 @@ import type { PipelineNodeData, PipelineEdgeData } from "@/lib/pipeline-graph";
 export type GraphState = {
   /** Name carried into local draft export/source view; preserved across import and autosave. */
   graphName: string;
+  /** Canonical graph-level trigger, preserved even though this editor has no graph-trigger UI. */
+  graphTrigger?: Trigger;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
   /** Applies React Flow's own node changes (select/drag/dimension/remove/…) via `applyNodeChanges`. */
@@ -52,6 +54,7 @@ export type GraphState = {
     nodes: Node<PipelineNodeData>[],
     edges: Edge<PipelineEdgeData>[],
     graphName?: string,
+    graphTrigger?: Trigger,
   ) => void;
 };
 
@@ -63,6 +66,7 @@ export const SEED_GRAPH: {
   name: string;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
+  trigger?: Trigger;
 } = {
   name: "druff-placeholder",
   nodes: [
@@ -100,9 +104,11 @@ export function createGraphState(seed: {
   name?: string;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
+  trigger?: Trigger;
 }): StateCreator<GraphState> {
   return (set, get) => ({
     graphName: seed.name ?? "untitled-pipeline",
+    graphTrigger: seed.trigger,
     nodes: seed.nodes,
     edges: seed.edges,
 
@@ -145,11 +151,12 @@ export function createGraphState(seed: {
       });
     },
 
-    setGraph: (nodes, edges, graphName) => {
+    setGraph: (nodes, edges, graphName, graphTrigger) => {
       set((state) => ({
         nodes,
         edges,
         graphName: graphName ?? state.graphName,
+        graphTrigger,
       }));
     },
   });

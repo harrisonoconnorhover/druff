@@ -14,7 +14,7 @@ export type NodeConfigEditorProps = {
   /** The node's current config; `undefined` renders as an empty row list. */
   config: Record<string, unknown> | undefined;
   /** Called with the recomputed config on every row edit/add/remove — never batched. */
-  onChange: (config: Record<string, string>) => void;
+  onChange: (config: Record<string, unknown>) => void;
 };
 
 /**
@@ -38,7 +38,7 @@ export function NodeConfigEditor({ config, onChange }: NodeConfigEditorProps) {
 
   function commit(next: ConfigEntry[]): void {
     setEntries(next);
-    onChange(entriesToConfig(next));
+    onChange(entriesToConfig(next, config ?? {}));
   }
 
   function updateEntry(index: number, patch: Partial<ConfigEntry>): void {
@@ -49,6 +49,11 @@ export function NodeConfigEditor({ config, onChange }: NodeConfigEditorProps) {
     <div className="flex flex-col gap-2">
       {entries.length === 0 && (
         <p className="text-xs text-muted-foreground">No config fields yet.</p>
+      )}
+      {Object.values(config ?? {}).some((value) => typeof value !== "string") && (
+        <p className="text-xs text-muted-foreground">
+          Non-text config values are preserved but are not editable here.
+        </p>
       )}
       {entries.map((entry, index) => (
         // Index as key: rows have no identity beyond position (key is the very thing being

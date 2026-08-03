@@ -7,6 +7,12 @@
 
 export {
   NodeFieldSchema,
+  FieldTestKindSchema,
+  FieldTestSchema,
+  CursorKindSchema,
+  CursorStrategySchema,
+  PositionSchema,
+  NodeVisualSchema,
   PipelineNodeSchema,
   TransformationKindSchema,
   TransformationSchema,
@@ -26,6 +32,12 @@ export {
 } from "@/lib/pipeline-graph/schema";
 export type {
   NodeField,
+  FieldTestKind,
+  FieldTest,
+  CursorKind,
+  CursorStrategy,
+  Position,
+  NodeVisual,
   PipelineNode,
   TransformationKind,
   Transformation,
