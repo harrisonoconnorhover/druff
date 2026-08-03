@@ -38,10 +38,10 @@ describe("createNode", () => {
     expect(node.data.config).toEqual(defaultConfigForDescriptor(GREENHOUSE_CONNECTOR));
   });
 
-  it("never seeds a non-empty default for the connector's secret field", () => {
+  it("seeds the executable Dander connector and endpoint binding", () => {
     const node = createNode("source", { x: 0, y: 0 }, "id", "greenhouse");
 
-    expect(node.data.config?.harvest_api_key_ref).toBe("");
+    expect(node.data.config).toEqual({ connector: "greenhouse_job_board", endpoint: "jobs" });
   });
 
   it("ignores an unknown connectorId and falls back to a plain node", () => {

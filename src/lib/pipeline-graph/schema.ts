@@ -248,10 +248,8 @@ export const TriggerSchema = z
   .strict();
 export type Trigger = z.infer<typeof TriggerSchema>;
 
-/** The closed set of write modes Dander's `WriterConfig.write_mode` may declare (Dander's
- *  `WriteMode`, `../dander/src/dander/writer/base.py`): `scd1`/`scd2` (slowly-changing-dimension
- *  merges), `snapshot` (full replace), `incremental` (append/merge driven by `cursor_field`). */
-export const WriteModeSchema = z.enum(["scd1", "scd2", "snapshot", "incremental"]);
+/** The closed set of write modes Dander's `WriterConfig.write_mode` may declare. */
+export const WriteModeSchema = z.enum(["scd1", "scd2", "snapshot", "incremental", "replace"]);
 export type WriteMode = z.infer<typeof WriteModeSchema>;
 
 /** The closed set of BigQuery partitioning granularities Dander's `PartitioningSpec.granularity`

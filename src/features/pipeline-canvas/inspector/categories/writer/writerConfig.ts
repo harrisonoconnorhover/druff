@@ -39,7 +39,7 @@ export type WriteModeDescriptor = {
 /**
  * The config-driven mode table backing the mode selector, mirroring Dander's
  * `_check_mode_requirements` verbatim: `business_key` is required for `scd1`/`scd2`/`incremental`
- * but not `snapshot`; `cursor_field` is required only for `incremental`.
+ * but not `snapshot`/`replace`; `cursor_field` is required only for `incremental`.
  */
 export const WRITE_MODES: readonly WriteModeDescriptor[] = [
   {
@@ -58,8 +58,8 @@ export const WRITE_MODES: readonly WriteModeDescriptor[] = [
   },
   {
     mode: "snapshot",
-    label: "Snapshot (full replace)",
-    help: "Replaces the destination table wholesale on every run — no business key needed.",
+    label: "Snapshot (append history)",
+    help: "Appends immutable point-in-time snapshots — no business key needed.",
     requiresBusinessKey: false,
     requiresCursor: false,
   },
@@ -69,6 +69,13 @@ export const WRITE_MODES: readonly WriteModeDescriptor[] = [
     help: "Appends/merges rows newer than the watermark column tracked by cursor_field.",
     requiresBusinessKey: true,
     requiresCursor: true,
+  },
+  {
+    mode: "replace",
+    label: "Replace",
+    help: "Replaces every destination row from the graph result — no business key needed.",
+    requiresBusinessKey: false,
+    requiresCursor: false,
   },
 ];
 

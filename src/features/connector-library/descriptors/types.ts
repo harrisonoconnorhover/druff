@@ -21,16 +21,16 @@ export const ConnectorFieldDescriptorSchema = z.object({
   label: z.string(),
   type: ConnectorFieldTypeSchema,
   required: z.boolean(),
+  defaultValue: z.string().optional(),
   help: z.string().optional(),
   placeholder: z.string().optional(),
 });
 export type ConnectorFieldDescriptor = z.infer<typeof ConnectorFieldDescriptorSchema>;
 
 /**
- * A full connector descriptor. `id` is Druff's stable palette/registry key (e.g. `"greenhouse"`);
- * `danderType` is the string written to Dander's on-disk node `type` on save and matched back on
- * load (see `registry.ts` and `canvas-convert.ts`'s connector seam) — kept distinct from `id`
- * because `type`'s exact spelling is owned by Dander, per this ticket's Design trade-offs.
+ * A full connector descriptor. `id` is Druff's stable palette/registry key. `danderType` is the
+ * canonical graph node type; `danderConnector` is the connector YAML identity stored in config.
+ * Both are required to recognize a connector when loading a generic `source` node.
  *
  * `icon` is validated by the Zod schema only as "present or absent" (`z.custom`) — a React
  * component reference isn't itself data crossing a serialization boundary, so there's nothing
@@ -41,6 +41,7 @@ export const ConnectorDescriptorSchema = z.object({
   name: z.string(),
   kind: z.literal("source"),
   danderType: z.string(),
+  danderConnector: z.string(),
   icon: z
     .custom<LucideIcon>(
       (value) => value === undefined || typeof value === "object" || typeof value === "function",

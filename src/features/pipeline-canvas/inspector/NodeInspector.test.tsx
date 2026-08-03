@@ -69,13 +69,12 @@ const GREENHOUSE_NODE: Node<PipelineNodeData> = {
   position: { x: 400, y: 0 },
   data: {
     name: "New source",
-    type: "connector.greenhouse",
+    type: "source",
     kind: "source",
     connectorId: "greenhouse",
     config: {
-      harvest_api_key_ref: "",
-      base_url: "",
-      on_behalf_of: "",
+      connector: "greenhouse_job_board",
+      endpoint: "jobs",
       nested: { keep: true },
     },
   },
@@ -193,16 +192,18 @@ describe("NodeInspector", () => {
     useGraphStore.setState({ nodes: [NODE_A, GREENHOUSE_NODE] });
     render(<LiveNodeInspector id="c" />);
 
-    expect(screen.getByLabelText(/harvest api key reference/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/base url/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/dander connector/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/endpoint/i)).toBeInTheDocument();
     expect(screen.queryByLabelText("Config key")).not.toBeInTheDocument();
   });
 
   it("surfaces the required-field error for a connector node's blank required field", () => {
-    useGraphStore.setState({ nodes: [NODE_A, GREENHOUSE_NODE] });
+    const blank = structuredClone(GREENHOUSE_NODE);
+    blank.data.config = { connector: "greenhouse_job_board", endpoint: "" };
+    useGraphStore.setState({ nodes: [NODE_A, blank] });
     render(<LiveNodeInspector id="c" />);
 
-    expect(screen.getByText(/harvest api key reference is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/endpoint is required/i)).toBeInTheDocument();
   });
 
   it("editing a connector field persists the change to the node's config in the store", async () => {
@@ -210,12 +211,12 @@ describe("NodeInspector", () => {
     useGraphStore.setState({ nodes: [NODE_A, GREENHOUSE_NODE] });
     render(<LiveNodeInspector id="c" />);
 
-    await user.type(screen.getByLabelText(/harvest api key reference/i), "my-greenhouse-key-ref");
+    await user.clear(screen.getByLabelText(/endpoint/i));
+    await user.type(screen.getByLabelText(/endpoint/i), "offices");
 
     expect(useGraphStore.getState().nodes.find((n) => n.id === "c")?.data.config).toEqual({
-      harvest_api_key_ref: "my-greenhouse-key-ref",
-      base_url: "",
-      on_behalf_of: "",
+      connector: "greenhouse_job_board",
+      endpoint: "offices",
       nested: { keep: true },
     });
   });
