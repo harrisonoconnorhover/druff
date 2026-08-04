@@ -2,42 +2,43 @@
 
 ## Finished
 
-- Bound Greenhouse source nodes to Dander's real `greenhouse_job_board` connector and `jobs` endpoint.
-- Resolve connector-backed source nodes by both graph node type and `config.connector`.
-- Seed only non-secret descriptor defaults so new connector nodes are immediately executable without storing credentials.
-- Added Dander's `replace` write mode to graph validation and writer controls.
-- Preserved PipelineGraph as the canonical format and the existing explicit Open/Save workflow.
+- Added Validate, Run deployed job, and Refresh status controls for one Dander-bound graph.
+- Displayed the fixed project/pipeline/job binding, Cloud Run execution, and Dander run-ledger result.
+- Required a clean opened ETag and blocked detached, dirty, conflicted, or active runs.
+- Added Zod-validated API boundaries without exposing credentials or row-level data.
+- Kept manifest write-back, deployment, scheduler control, and arbitrary cloud browsing out of scope.
 
 ## Try It
 
 ```bash
+dander graph serve --file /path/to/graphs/greenhouse_jobs.yaml --config /path/to/dander.yaml \
+  --pipeline greenhouse_jobs_graph --project my-gcp-project
 pnpm dev
 ```
 
-Add Greenhouse and target nodes, select **Replace**, connect the fields, then save the
-graph through the local Dander graph service. Reference that file from a Dander pipeline.
+Open from Dander, Refresh status, Validate graph, Run deployed job, then Refresh status again.
 
 ## Checks
 
-- `pnpm test` — 47 files and 550 tests passed.
-- `pnpm test:e2e` — 6 Chromium tests passed.
-- `pnpm lint`, `pnpm typecheck`, and `pnpm format:check` — passed.
-- `pnpm build` — production build passed.
+- `pnpm lint` and `pnpm typecheck` passed.
+- `pnpm test` passed: 49 files and 556 tests.
+- All 7 Playwright workflows passed in Chromium; the production Next.js build passed.
+- No new dependency, secret, deployment path, or cloud mutation was added by Druff.
+- Independent final review passed with no material findings.
 
 ## Decisions
 
-- Druff authors connector/endpoint identity; Dander connector YAML owns operational details and secrets.
-- Generic source nodes are not inferred to be Greenhouse without the matching connector binding.
-- `replace` is the only graph target mode the first Dander runtime bridge executes.
+- The operator selects all cloud authority when starting Dander; Druff only displays the binding.
+- Operations require the saved graph revision, so unsaved canvas edits are never implied to have run.
+- Completion refresh is explicit rather than a background polling/control-plane feature.
 
 ## Remaining
 
-- Merge the companion Dander runtime bridge before presenting Execute/Deploy as available.
-- Add execution status UI only after the runtime contract is merged and stable.
-- Require separate approval for any hosted image push or GCP deployment.
+- Merge through protected CI.
+- Exercise the UI against the retained paused graph job and reconfirm data/infra invariants.
 
 ## Review First
 
-- `src/features/connector-library/descriptors/greenhouse.ts`
-- `src/features/connector-library/registry.ts`
-- `src/lib/pipeline-graph/canvas-convert.ts`
+- `src/lib/dander-operations/graph-operations.ts`
+- `src/features/graph-operations/useGraphOperations.ts`
+- `src/features/graph-operations/GraphOperationsBar.tsx`

@@ -13,7 +13,7 @@ store, the pure pipeline-graph model/converters, and three browser affordances:
 ## Files
 
 - `GraphEditor.tsx` — container: owns `viewMode`, mounts persistence, renders the toolbar above the
-  active view.
+  active view, and passes the opened revision to the separate graph-operations feature.
 - `GraphToolbar.tsx` — Dander Open/Save, draft export, graph/manifest import, status, and view toggle.
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
 - `useGraphPersistence.ts` — explicit async Open/Save controller with dirty/conflict state.
@@ -34,4 +34,5 @@ never re-encoded as or written back to `dander.yaml`.
 - Dander exposes exactly one operator-selected graph file. Multi-file browsing is intentionally
   deferred until the product has a real graph registry convention.
 - Saving normalizes YAML formatting/comments. Model fields are preserved; byte formatting is not.
-- Pipeline execution and Terraform deployment remain separate future Dander capabilities.
+- Execution controls live in `src/features/graph-operations` and can only start an already-deployed,
+  operator-bound job. Terraform deployment remains out of scope.

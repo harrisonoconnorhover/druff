@@ -4,8 +4,10 @@ Front-end companion to **[Dander](../dander)** — a visual editor for Dander's 
 `PipelineGraph` files (drag/drop nodes, wire connections, configure sources/transforms/writes).
 
 Druff opens and saves one graph file through Dander's localhost API. Dander owns parsing,
-validation, conflict detection, and atomic filesystem writes. A version-1 `dander.yaml` can still
-be imported as a detached, one-way visualization; Druff never writes that manifest or deploys it.
+validation, conflict detection, and atomic filesystem writes. When the operator binds that graph
+to one manifest pipeline, Druff can also validate it, manually run its already-deployed Cloud Run
+job, and show compact execution/run-ledger status. A version-1 `dander.yaml` can still be imported
+as a detached, one-way visualization; Druff never writes that manifest or deploys it.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
@@ -42,6 +44,23 @@ dander graph serve --file /absolute/path/to/pipeline.yaml
 Then choose **Open from Dander**. Druff uses explicit Save, shows unsaved/conflict state, and will
 not overwrite a file that changed after it was opened. Graph YAML formatting and comments may be
 normalized because Dander writes its canonical model.
+
+To enable the narrow operational controls for one graph that is already deployed, start Dander
+with its matching manifest pipeline and GCP project:
+
+```bash
+dander graph serve \
+  --file /absolute/path/to/graphs/greenhouse_jobs.yaml \
+  --config /absolute/path/to/dander.yaml \
+  --pipeline greenhouse_jobs_graph \
+  --project my-gcp-project
+```
+
+Choose **Open from Dander**, then **Refresh status**. Validate and Run are enabled only while the
+opened graph is saved and no execution is active. Run uses the operator's local `gcloud` identity
+and targets only the fixed job Dander derived at startup. Use Refresh to read completion and the
+latest Dander run-ledger result. These controls do not deploy edits, write `dander.yaml`, enable a
+schedule, or expose cloud credentials to the browser.
 
 To visualize a hosted Dander project manifest, choose **Import graph or dander.yaml** and select its
 `dander.yaml`. Druff draws each schedule, source, and selected model. Exported `.druff.yaml`/JSON
@@ -110,5 +129,6 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 ## Status
 
 Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
-validation, source view, Greenhouse connector configuration, and one-way hosted-manifest preview.
-PipelineGraph execution, manifest write-back, and deployment are not implemented.
+validation, source view, Greenhouse connector configuration, one-way hosted-manifest preview, and
+manual execution/status for one operator-bound deployed graph. Manifest write-back and deployment
+are not implemented.
