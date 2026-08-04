@@ -25,12 +25,13 @@ const DEFAULT_VIEW: WriterView = {
 };
 
 describe("WRITE_MODES", () => {
-  it("is the closed set scd1/scd2/snapshot/incremental", () => {
+  it("is the complete Dander write-mode set", () => {
     expect(WRITE_MODES.map((mode) => mode.mode)).toEqual([
       "scd1",
       "scd2",
       "snapshot",
       "incremental",
+      "replace",
     ]);
   });
 
@@ -41,6 +42,7 @@ describe("WRITE_MODES", () => {
       scd2: true,
       snapshot: false,
       incremental: true,
+      replace: false,
     });
   });
 
@@ -51,6 +53,7 @@ describe("WRITE_MODES", () => {
       scd2: false,
       snapshot: false,
       incremental: true,
+      replace: false,
     });
   });
 });

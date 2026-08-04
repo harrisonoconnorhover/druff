@@ -8,6 +8,7 @@ const FIXTURE_CONNECTOR: ConnectorDescriptor = {
   name: "Fixture",
   kind: "source",
   danderType: "connector.fixture",
+  danderConnector: "fixture",
   fields: [
     { key: "api_key_ref", label: "API key reference", type: "secret", required: true },
     { key: "base_url", label: "Base URL", type: "text", required: false },
@@ -30,5 +31,29 @@ describe("defaultConfigForDescriptor", () => {
 
   it("returns an empty object for a descriptor with no fields", () => {
     expect(defaultConfigForDescriptor({ ...FIXTURE_CONNECTOR, fields: [] })).toEqual({});
+  });
+
+  it("seeds non-secret runtime bindings but never secret defaults", () => {
+    expect(
+      defaultConfigForDescriptor({
+        ...FIXTURE_CONNECTOR,
+        fields: [
+          {
+            key: "connector",
+            label: "Connector",
+            type: "text",
+            required: true,
+            defaultValue: "fixture",
+          },
+          {
+            key: "secret",
+            label: "Secret",
+            type: "secret",
+            required: true,
+            defaultValue: "forbidden",
+          },
+        ],
+      }),
+    ).toEqual({ connector: "fixture", secret: "" });
   });
 });

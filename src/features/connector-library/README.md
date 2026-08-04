@@ -12,12 +12,13 @@ Adding connector #2..N later is "add a descriptor file + one registry entry," no
   required/help/placeholder) and `ConnectorDescriptor` (id/name/kind/danderType/icon/fields), plus
   the Zod schemas that parse a descriptor so a malformed/hand-edited one fails loud at the boundary
   rather than rendering a broken form.
-- `descriptors/greenhouse.ts` — the Greenhouse source connector, as data. Fields are representative
-  of Greenhouse's Harvest API, not authoritative — see the file's `TODO(dander-contract)`.
-- `registry.ts` — `CONNECTOR_REGISTRY` plus `getConnector(id)` / `getConnectorByDanderType(type)` /
-  `listConnectors()`. The one place other features read pre-made connectors from.
-- `defaultConfig.ts` — `defaultConfigForDescriptor`: seeds a fully-keyed, all-empty `config` for a
-  freshly-dropped connector node. No `secret` field ever gets a non-empty default.
+- `descriptors/greenhouse.ts` — the Greenhouse source binding, as data. It emits Dander's canonical
+  `type: source`, `connector: greenhouse_job_board`, and `endpoint: jobs` contract.
+- `registry.ts` — `CONNECTOR_REGISTRY` plus `getConnector(id)` /
+  `getConnectorForDanderNode(type, config)` / `listConnectors()`. The one place other features read
+  pre-made connectors from.
+- `defaultConfig.ts` — `defaultConfigForDescriptor`: seeds declared non-secret binding defaults
+  for a freshly dropped connector node. No `secret` field ever gets a non-empty default.
 - `validateConnectorConfig.ts` — pure required-field validator; returns a field-key -> message map,
   empty when the config is valid.
 - `ConnectorConfigForm.tsx` — the descriptor-driven form: one row per field, generic dispatch on
@@ -43,12 +44,11 @@ and never receive a default value. No fixture, test, or committed descriptor car
   `validateConnectorConfig`, and renders `ConnectorConfigForm` in place of the generic key/value
   `NodeConfigEditor` — writing every edit back through the store's `updateNodeData`, so config stays
   store-driven and live on the canvas.
-- **Graph converter** (`canvas-convert.ts`, DRUFF-4) maps `connectorId <-> danderType` through the
-  registry on save/load, so a Greenhouse node's connector identity survives the round trip. `config`
-  passes through untouched — the descriptor never participates in serialization, only in editing.
+- **Graph converter** (`canvas-convert.ts`, DRUFF-4) maps `connectorId` to canonical `type` on save
+  and resolves `type + config.connector` on load. This avoids misclassifying every generic source
+  node as Greenhouse while keeping connector identity lossless.
 
 ## Out of scope
 
-Druff never executes a connector — this module only authors/stores its `config`
-(`steering/00-project-overview.md`'s scope discipline). There is no client-side call to Greenhouse
-anywhere in this feature.
+Druff never calls Greenhouse. It authors the binding; Dander resolves the connector YAML and owns
+execution, state, and deployment.

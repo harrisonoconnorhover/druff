@@ -32,7 +32,7 @@ export type PipelineNodeData = {
    * via that connector's descriptor (icon/name on the canvas, a descriptor-driven form in the
    * inspector) instead of the generic kind styling/config editor. Never written to the graph
    * directly: on save, `canvas-convert.ts` maps it to Dander's node `type` (`danderType`); on load,
-   * it's re-derived from `type` via `getConnectorByDanderType`. Absent for a non-connector node.
+   * it's re-derived from `type` plus `config.connector`. Absent for a non-connector node.
    */
   connectorId?: string;
   /** Kind-specific config, edited via the inspector's `NodeConfigEditor` (DRUFF-3) / a connector

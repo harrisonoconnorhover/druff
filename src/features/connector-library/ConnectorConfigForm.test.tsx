@@ -10,6 +10,7 @@ const FIXTURE_CONNECTOR: ConnectorDescriptor = {
   name: "Fixture",
   kind: "source",
   danderType: "connector.fixture",
+  danderConnector: "fixture",
   fields: [
     {
       key: "api_key_ref",

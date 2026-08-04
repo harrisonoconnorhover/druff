@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONNECTOR_REGISTRY,
   getConnector,
-  getConnectorByDanderType,
+  getConnectorForDanderNode,
   listConnectors,
 } from "@/features/connector-library/registry";
 import { GREENHOUSE_CONNECTOR } from "@/features/connector-library/descriptors/greenhouse";
@@ -18,18 +18,22 @@ describe("getConnector", () => {
   });
 });
 
-describe("getConnectorByDanderType", () => {
-  it("resolves the Greenhouse connector by its danderType", () => {
-    expect(getConnectorByDanderType(GREENHOUSE_CONNECTOR.danderType)).toBe(GREENHOUSE_CONNECTOR);
+describe("getConnectorForDanderNode", () => {
+  it("resolves Greenhouse by generic source type plus connector binding", () => {
+    expect(getConnectorForDanderNode("source", { connector: "greenhouse_job_board" })).toBe(
+      GREENHOUSE_CONNECTOR,
+    );
   });
 
-  it("returns undefined for an unknown type token", () => {
-    expect(getConnectorByDanderType("connector.unknown")).toBeUndefined();
+  it("does not classify an unrelated generic source as Greenhouse", () => {
+    expect(getConnectorForDanderNode("source", { connector: "salesforce" })).toBeUndefined();
   });
 
-  it("round-trips id -> danderType -> id for every registered connector (not a hard-coded string)", () => {
+  it("round-trips each registered connector's runtime identity", () => {
     for (const connector of listConnectors()) {
-      const resolved = getConnectorByDanderType(connector.danderType);
+      const resolved = getConnectorForDanderNode(connector.danderType, {
+        connector: connector.danderConnector,
+      });
       expect(resolved?.id).toBe(connector.id);
     }
   });

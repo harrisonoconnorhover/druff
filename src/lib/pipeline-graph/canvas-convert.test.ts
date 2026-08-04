@@ -101,7 +101,7 @@ describe("canvasToGraph", () => {
         type: "source", // stale/creation-time default — must not win over the connector mapping
         kind: "source",
         connectorId: "greenhouse",
-        config: { harvest_api_key_ref: "my-greenhouse-key-ref" },
+        config: { connector: "greenhouse_job_board", endpoint: "jobs" },
       },
     };
 
@@ -163,7 +163,7 @@ describe("graphToCanvas", () => {
           id: "gh",
           type: GREENHOUSE_CONNECTOR.danderType,
           name: "Greenhouse",
-          config: {},
+          config: { connector: "greenhouse_job_board", endpoint: "jobs" },
           fields: [],
         },
         { id: "plain", type: "source", name: "Plain", config: {}, fields: [] },

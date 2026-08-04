@@ -20,8 +20,16 @@ export function getConnector(id: string): ConnectorDescriptor | undefined {
  * used when loading a graph (`canvas-convert.ts`'s `graphToCanvas`) to recognize a node as a known
  * connector.
  */
-export function getConnectorByDanderType(danderType: string): ConnectorDescriptor | undefined {
-  return Object.values(CONNECTOR_REGISTRY).find((connector) => connector.danderType === danderType);
+export function getConnectorForDanderNode(
+  danderType: string,
+  config: Record<string, unknown>,
+): ConnectorDescriptor | undefined {
+  const connectorName = config.connector;
+  if (typeof connectorName !== "string") return undefined;
+  return Object.values(CONNECTOR_REGISTRY).find(
+    (connector) =>
+      connector.danderType === danderType && connector.danderConnector === connectorName,
+  );
 }
 
 /** All registered connectors, in registration order — what the palette lists as pre-made entries. */

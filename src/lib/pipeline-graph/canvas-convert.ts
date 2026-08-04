@@ -11,7 +11,7 @@ import {
   type PipelineNodeData,
   type PipelineEdgeData,
 } from "@/lib/pipeline-graph/canvas-types";
-import { getConnector, getConnectorByDanderType } from "@/features/connector-library/registry";
+import { getConnector, getConnectorForDanderNode } from "@/features/connector-library/registry";
 
 /** Placeholder graph name used when a caller doesn't supply one (the canvas store doesn't track a
  * graph-level name yet — see this file's module doc comment). */
@@ -127,7 +127,7 @@ function graphNodeToCanvasNode(
   // Inverse of `nodeToGraphNode`'s connector mapping: a `type` matching a registered connector's
   // `danderType` re-derives `connectorId`, so a saved Greenhouse node is recognized as one again on
   // load (round-trips through `canvasToGraph`/`graphToCanvas`, not just a fresh drag-drop).
-  const connector = getConnectorByDanderType(node.type);
+  const connector = getConnectorForDanderNode(node.type, node.config);
   return {
     id: node.id,
     type: "pipelineNode",

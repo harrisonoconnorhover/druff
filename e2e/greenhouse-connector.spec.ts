@@ -1,10 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
 
-/** Fixture-only secret *reference* string — never a real Greenhouse API key, per
- * `steering/01-security.md` (the descriptor's `harvest_api_key_ref` field stores a handle, not a
- * secret value, so this is safe to commit and to type into the form). */
-const FIXTURE_API_KEY_REF = "projects/test-project/secrets/greenhouse-harvest-api-key-fixture";
-
 /** Locates a canvas node by its visible name, scoped to `.react-flow__node` — disambiguates from
  * palette entries with the same visible text (e.g. the "Greenhouse" connector palette item). */
 function canvasNode(page: Page, name: string) {
@@ -47,11 +42,13 @@ test("dragging Greenhouse from the palette creates an editable connector node", 
   // Select it so the inspector renders the descriptor-driven connector form (not the generic
   // key/value editor).
   await newNode.click();
-  const apiKeyField = page.getByLabel(/harvest api key reference/i);
-  await expect(apiKeyField).toBeVisible();
+  const endpointField = page.getByLabel(/endpoint/i);
+  await expect(endpointField).toBeVisible();
+  await expect(page.getByLabel(/dander connector/i)).toHaveValue("greenhouse_job_board");
+  await expect(endpointField).toHaveValue("jobs");
 
-  await apiKeyField.fill(FIXTURE_API_KEY_REF);
-  await expect(page.getByLabel(/harvest api key reference/i)).toHaveValue(FIXTURE_API_KEY_REF);
+  await endpointField.fill("offices");
+  await expect(page.getByLabel(/endpoint/i)).toHaveValue("offices");
   await expect(page.getByText("Local draft", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save to Dander" })).toBeDisabled();
 });
