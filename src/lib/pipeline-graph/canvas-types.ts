@@ -1,4 +1,4 @@
-import type { NodeField, PipelineEdge } from "@/lib/pipeline-graph/schema";
+import type { NodeField, PipelineEdge, PipelineNode } from "@/lib/pipeline-graph/schema";
 
 /**
  * The four draggable node kinds the palette (DRUFF-2) and `PipelineNode` (canvas rendering) both
@@ -40,13 +40,19 @@ export type PipelineNodeData = {
   config?: Record<string, unknown>;
   /** Declared field schema. Maps 1:1 to the graph node's `fields`. */
   fields?: NodeField[];
+  /** Complete Dander node loaded at the graph boundary. Save patches editor-owned fields onto
+   * this model so triggers, cursors, visuals, and future supported properties are not rebuilt or
+   * silently discarded. Not displayed directly. */
+  canonical?: PipelineNode;
+  /** Canvas position at the last canonical load/save, used to distinguish an untouched fallback
+   * layout from a user-authored movement that should create/update `visual.position`. */
+  loadedPosition?: { x: number; y: number };
 };
 
 /**
- * A node's canvas position, keyed by node id. The one piece of canvas state Dander's graph has no
- * room for — the pipeline-graph shape is deliberately layout-free (see `canvas-convert.ts`'s
- * "Positions" doc comment) — so this is an app-only sidecar persisted alongside the graph
- * (DRUFF-5's localStorage envelope), never smuggled into a node's `config`/`metadata`.
+ * A legacy/local-draft position sidecar, keyed by node id. Canonical Dander graphs now store
+ * positions in `Node.visual.position`; this remains only for old local drafts and one-way manifest
+ * previews that do not have canonical graph visuals.
  */
 export type GraphLayout = Record<string, { x: number; y: number }>;
 

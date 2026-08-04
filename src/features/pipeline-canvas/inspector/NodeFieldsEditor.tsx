@@ -176,7 +176,7 @@ function FieldRowEditor({
 
 type FieldMetadataEditorProps = {
   metadata: Record<string, unknown> | undefined;
-  onChange: (metadata: Record<string, string>) => void;
+  onChange: (metadata: Record<string, unknown>) => void;
 };
 
 /**
@@ -199,7 +199,7 @@ function FieldMetadataEditor({ metadata, onChange }: FieldMetadataEditorProps) {
 
   function commit(next: ConfigEntry[]): void {
     setEntries(next);
-    onChange(entriesToConfig(next));
+    onChange(entriesToConfig(next, metadata ?? {}));
   }
 
   return (
@@ -208,6 +208,11 @@ function FieldMetadataEditor({ metadata, onChange }: FieldMetadataEditorProps) {
       <p className="text-xs text-muted-foreground">
         Tags/labels only — never a real field value or sample data.
       </p>
+      {Object.values(metadata ?? {}).some((value) => typeof value !== "string") && (
+        <p className="text-xs text-muted-foreground">
+          Non-text metadata is preserved but is not editable here.
+        </p>
+      )}
       {entries.map((entry, index) => (
         // Index as key: same rationale as `NodeConfigEditor` — tag rows have no identity beyond
         // position and are only appended/removed, not reordered.

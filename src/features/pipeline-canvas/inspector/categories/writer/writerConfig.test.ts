@@ -233,6 +233,43 @@ describe("writeWriterConfig", () => {
     expect(config.some_other_key).toBe("value");
     expect(prevConfig).toEqual(frozen);
   });
+
+  it("preserves current Dander writer settings that Druff does not edit", () => {
+    const prevConfig = {
+      writer: {
+        write_mode: "scd1",
+        destination: {
+          dataset: "analytics",
+          table: "dim_customer",
+          business_key: ["customer_id"],
+        },
+        max_batch_rows: 2_500,
+        schema_evolution: "additive",
+        transport: "storage_write",
+      },
+    };
+    const frozen = structuredClone(prevConfig);
+
+    const config = writeWriterConfig(prevConfig, {
+      ...DEFAULT_VIEW,
+      dataset: "analytics_v2",
+      table: "dim_customer",
+      businessKey: ["customer_id"],
+    });
+
+    expect(config.writer).toEqual({
+      max_batch_rows: 2_500,
+      schema_evolution: "additive",
+      transport: "storage_write",
+      write_mode: "scd1",
+      destination: {
+        dataset: "analytics_v2",
+        table: "dim_customer",
+        business_key: ["customer_id"],
+      },
+    });
+    expect(prevConfig).toEqual(frozen);
+  });
 });
 
 describe("readWriterConfig / writeWriterConfig round trip", () => {

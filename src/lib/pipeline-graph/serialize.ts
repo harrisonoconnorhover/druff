@@ -69,9 +69,11 @@ function describeError(error: unknown): string {
  * `null`s, like a `constant` `Transformation`'s `constant: null` — is touched.
  */
 function toCanonicalPayload(graph: PipelineGraph): Record<string, unknown> {
-  return {
+  const payload: Record<string, unknown> = {
     name: graph.name,
     nodes: graph.nodes,
     edges: graph.edges.map(({ join, ...rest }) => (join === undefined ? rest : { ...rest, join })),
   };
+  if (graph.trigger !== undefined) payload.trigger = graph.trigger;
+  return payload;
 }

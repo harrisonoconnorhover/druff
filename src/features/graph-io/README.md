@@ -1,15 +1,12 @@
 # `graph-io`
 
-Local save/load and the canvas ⇄ source view toggle (DRUFF-5) — the "Graph source view" module
-described in `steering/00-project-overview.md`. This feature adds **no new graph semantics**; it is
-glue between the canvas store (`src/lib/graph-store.ts`, DRUFF-1), the pure pipeline-graph model and
-converters (`src/lib/pipeline-graph/`, DRUFF-4), and three browser affordances:
+Canonical graph Open/Save and the canvas ⇄ source view toggle. This is glue between the canvas
+store, the pure pipeline-graph model/converters, and three browser affordances:
 
-- **localStorage persistence** — `useGraphPersistence` hydrates the store from the last-saved
-  snapshot on mount, then debounced-autosaves on every store change, via
-  `src/lib/persistence/graph-persistence.ts`.
-- **File export/import** — `GraphToolbar`'s Export/Import controls, via
-  `src/lib/graph-io/graph-file.ts`.
+- **Dander persistence** — explicit Open/Save against the graph selected by `dander graph serve`.
+  Every save carries the last ETag revision; conflicts are visible and never overwrite the file.
+- **File export/import** — `GraphToolbar` exports explicitly named Druff graph drafts and imports
+  either those drafts or a version-1 `dander.yaml`, via `src/lib/graph-io/graph-file.ts`.
 - **Canvas ⇄ source toggle** — `GraphEditor` owns `viewMode` and renders either `PipelineCanvas` or
   the read-only `SourceView`.
 
@@ -17,20 +14,24 @@ converters (`src/lib/pipeline-graph/`, DRUFF-4), and three browser affordances:
 
 - `GraphEditor.tsx` — container: owns `viewMode`, mounts persistence, renders the toolbar above the
   active view.
-- `GraphToolbar.tsx` — export (YAML/JSON), import (validates + fail-loud toast on malformed input),
-  clear-saved, and the canvas/source toggle.
+- `GraphToolbar.tsx` — Dander Open/Save, draft export, graph/manifest import, status, and view toggle.
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
-- `useGraphPersistence.ts` — hydrate-on-mount + debounced-autosave hook.
+- `useGraphPersistence.ts` — explicit async Open/Save controller with dirty/conflict state.
 
 ## Single serialization path
 
-Every conversion between the canvas and text goes through DRUFF-4's converters:
-`canvasToGraph → encodeGraph` for anything going out (autosave, file export, `SourceView`), and
-`decodeGraph → graphToCanvas` for anything coming in (localStorage hydration, file import). There is
-exactly one encoder and one validating decoder in the app — nothing here reimplements either.
+Every conversion from the canvas to text goes through DRUFF-4's
+`canvasToGraph → encodeGraph` path (Save, draft export, `SourceView`). Graph drafts come back
+through `decodeGraph → graphToCanvas`. A Dander manifest takes the separate, one-way
+`projectDanderManifest → graphToCanvas` path because it is a different product contract; it is
+never re-encoded as or written back to `dander.yaml`.
 
 ## What's out of scope here
 
 - `SourceView` is **read-only** — editing YAML/JSON back into the canvas is a future ticket.
-- Only localStorage is implemented; `GraphPersistence` (`src/lib/persistence/graph-persistence.ts`)
-  is the seam a future Dander-backed store would implement instead.
+- The Dander manifest projection does not read connector/model file contents and cannot write back
+  or deploy changes.
+- Dander exposes exactly one operator-selected graph file. Multi-file browsing is intentionally
+  deferred until the product has a real graph registry convention.
+- Saving normalizes YAML formatting/comments. Model fields are preserved; byte formatting is not.
+- Pipeline execution and Terraform deployment remain separate future Dander capabilities.

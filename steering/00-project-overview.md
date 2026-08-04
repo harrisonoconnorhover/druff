@@ -26,11 +26,13 @@ below.
 
 ## Contract with Dander
 
-- TODO: how is the pipeline-graph schema shared? Likely candidate: Dander exports
-  `PipelineGraph.model_json_schema()` (Pydantic) as a versioned artifact Druff consumes, rather
-  than Druff importing Dander's Python types directly.
-- TODO: how does Druff read/write actual graph files during development — talk to a running
-  Dander instance, a local file, or both?
+- `PipelineGraph` is the canonical document Druff edits. Dander's localhost single-file service
+  owns validation, optimistic concurrency, canonical serialization, and atomic file replacement.
+- The deployed version-1 `dander.yaml` manifest remains a separate contract. Druff may import it
+  into a detached one-way projection, but does not write it back or deploy it.
+- Druff preserves every field in Dander's current graph model, patches only editor-owned fields,
+  and fails loud on unknown fields. Model equivalence is guaranteed; YAML formatting/comments are
+  not preserved.
 
 ## Modules (target architecture)
 
@@ -73,6 +75,16 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 ## Decision Log
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
+
+- 2026-08-03 — **Dander-backed single-file persistence with `PipelineGraph` canonical** — Druff
+  uses explicit Open/Save through a loopback-only Dander API. The operator chooses one file when
+  starting Dander; conditional writes prevent stale overwrites, and Dander remains the validation
+  and filesystem authority. Execution/deployment stay separate until graph runtime binding exists.
+
+- 2026-08-03 — **Import `dander.yaml` as a one-way local visualization draft** — the hosted
+  manifest is the real deployed contract today, while Druff's graph format is not an execution
+  input. Projecting schedule/source/model structure gives immediate value without changing Dander
+  or inventing unsafe write-back semantics; exports are explicitly named Druff drafts.
 
 - 2026-07-22 — **Druff never executes user code** — custom connector/transform snippets are
   authored and stored, never run client-side. Keeps the frontend genuinely lightweight and avoids

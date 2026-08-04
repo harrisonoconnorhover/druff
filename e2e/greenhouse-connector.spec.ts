@@ -12,13 +12,12 @@ function canvasNode(page: Page, name: string) {
 }
 
 /**
- * End-to-end round trip the ticket's Design calls out explicitly: drag Greenhouse from the palette
- * onto the canvas, edit its config in the inspector, reload the page, and confirm both the
- * connector identity and the config value survive (localStorage persistence, DRUFF-5). Drag/drop
- * and real canvas interaction don't run reliably under jsdom, so this is a Playwright test, not a
- * unit test (per `steering/languages/typescript.md`).
+ * End-to-end editor interaction: drag Greenhouse from the palette, edit its registry-driven
+ * config, and confirm the value remains in the detached local draft. Persistence to a Dander graph
+ * is exercised through explicit Open/Save, not localStorage autosave. Drag/drop and real canvas
+ * interaction don't run reliably under jsdom, so this stays a Playwright test.
  */
-test("dragging Greenhouse from the palette creates a connector node whose config persists across reload", async ({
+test("dragging Greenhouse from the palette creates an editable connector node", async ({
   page,
 }) => {
   await page.goto("/");
@@ -52,19 +51,7 @@ test("dragging Greenhouse from the palette creates a connector node whose config
   await expect(apiKeyField).toBeVisible();
 
   await apiKeyField.fill(FIXTURE_API_KEY_REF);
-
-  // Wait for the debounced autosave (DRUFF-5) to actually write the fixture value before reloading,
-  // rather than a fixed sleep.
-  await expect
-    .poll(async () => page.evaluate(() => localStorage.getItem("druff.graph.v1")))
-    .toContain(FIXTURE_API_KEY_REF);
-
-  await page.reload();
-
-  const reloadedNode = canvasNode(page, "New source");
-  await expect(reloadedNode).toBeVisible();
-  await expect(reloadedNode).toContainText("Greenhouse");
-
-  await reloadedNode.click();
   await expect(page.getByLabel(/harvest api key reference/i)).toHaveValue(FIXTURE_API_KEY_REF);
+  await expect(page.getByText("Local draft", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save to Dander" })).toBeDisabled();
 });

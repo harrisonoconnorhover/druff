@@ -54,8 +54,16 @@ describe("canvasToGraph", () => {
           fields: [
             { name: "id", type: "STRING", nullable: false, description: null, metadata: {} },
           ],
+          visual: { position: { x: 10, y: 20 }, color: null, icon: null },
         },
-        { id: "tgt", type: "target", name: "Target", config: {}, fields: [] },
+        {
+          id: "tgt",
+          type: "target",
+          name: "Target",
+          config: {},
+          fields: [],
+          visual: { position: { x: 300, y: 20 }, color: null, icon: null },
+        },
       ],
       edges: [
         {
@@ -63,7 +71,6 @@ describe("canvasToGraph", () => {
           to: "tgt",
           metadata: {},
           mappings: [{ source: "id", target: "id", transformation: null, metadata: {} }],
-          join: undefined,
         },
       ],
     });
@@ -74,12 +81,13 @@ describe("canvasToGraph", () => {
     expect(graph.name).toBe("untitled-pipeline");
   });
 
-  it("drops position/selected/dragging — the graph carries no layout or UI state", () => {
+  it("writes canonical visual.position but drops React Flow-only state", () => {
     const draggedNode = { ...SOURCE_NODE, selected: true, dragging: true };
 
     const graph = canvasToGraph([draggedNode], [], "g");
 
-    expect(JSON.stringify(graph)).not.toMatch(/"position"|"selected"|"dragging"/);
+    expect(graph.nodes[0]?.visual?.position).toEqual({ x: 10, y: 20 });
+    expect(JSON.stringify(graph)).not.toMatch(/"selected"|"dragging"/);
   });
 
   it("writes a connector node's registry danderType as the graph type, not its data.type", () => {

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Node } from "@xyflow/react";
 import { NodeInspector } from "@/features/pipeline-canvas/inspector/NodeInspector";
 import { useGraphStore } from "@/lib/graph-store";
-import type { PipelineNodeData } from "@/lib/pipeline-graph";
+import { canvasToGraph, type PipelineNodeData } from "@/lib/pipeline-graph";
 
 /**
  * Test-only stand-in for `Inspector`'s live subscription: `NodeInspector` is a pure prop-driven
@@ -45,7 +45,7 @@ const GENERIC_NODE: Node<PipelineNodeData> = {
     type: "source",
     kind: "source",
     connectorId: "not-a-real-connector",
-    config: { region: "us-east1" },
+    config: { region: "us-east1", retries: 3, nested: { keep: true } },
   },
   selected: false,
 };
@@ -72,7 +72,12 @@ const GREENHOUSE_NODE: Node<PipelineNodeData> = {
     type: "connector.greenhouse",
     kind: "source",
     connectorId: "greenhouse",
-    config: { harvest_api_key_ref: "", base_url: "", on_behalf_of: "" },
+    config: {
+      harvest_api_key_ref: "",
+      base_url: "",
+      on_behalf_of: "",
+      nested: { keep: true },
+    },
   },
   selected: false,
 };
@@ -92,7 +97,7 @@ const NODE_WITH_FIELDS: Node<PipelineNodeData> = {
         type: "STRING",
         nullable: true,
         description: "Contact email",
-        metadata: { sensitivity: "pii" },
+        metadata: { sensitivity: "pii", lineage: { system: "crm" } },
       },
     ],
   },
@@ -147,6 +152,15 @@ describe("NodeInspector", () => {
 
     expect(useGraphStore.getState().nodes.find((n) => n.id === "b")?.data.config).toEqual({
       region: "us-west1",
+      retries: 3,
+      nested: { keep: true },
+    });
+
+    const state = useGraphStore.getState();
+    expect(canvasToGraph(state.nodes, state.edges).nodes[1]?.config).toEqual({
+      region: "us-west1",
+      retries: 3,
+      nested: { keep: true },
     });
   });
 
@@ -169,7 +183,10 @@ describe("NodeInspector", () => {
 
     await user.click(screen.getByRole("button", { name: /remove field/i }));
 
-    expect(useGraphStore.getState().nodes.find((n) => n.id === "b")?.data.config).toEqual({});
+    expect(useGraphStore.getState().nodes.find((n) => n.id === "b")?.data.config).toEqual({
+      retries: 3,
+      nested: { keep: true },
+    });
   });
 
   it("renders the descriptor-driven connector form (not the generic editor) for a connector node", () => {
@@ -199,6 +216,7 @@ describe("NodeInspector", () => {
       harvest_api_key_ref: "my-greenhouse-key-ref",
       base_url: "",
       on_behalf_of: "",
+      nested: { keep: true },
     });
   });
 
@@ -326,7 +344,7 @@ describe("NodeInspector", () => {
 
       expect(
         useGraphStore.getState().nodes.find((n) => n.id === "d")?.data.fields?.[1].metadata,
-      ).toEqual({ sensitivity: "restricted" });
+      ).toEqual({ sensitivity: "restricted", lineage: { system: "crm" } });
     });
 
     it("adding a metadata tag and typing a key/value persists a new tag to the field's metadata", async () => {

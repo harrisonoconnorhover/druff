@@ -20,11 +20,10 @@ describe("configToEntries", () => {
     ]);
   });
 
-  it("stringifies non-string values", () => {
-    expect(configToEntries({ retries: 3, enabled: true })).toEqual([
-      { key: "retries", value: "3" },
-      { key: "enabled", value: "true" },
-    ]);
+  it("does not expose opaque values to the text-only editor", () => {
+    expect(
+      configToEntries({ region: "us-east1", retries: 3, enabled: true, nested: { keep: true } }),
+    ).toEqual([{ key: "region", value: "us-east1" }]);
   });
 });
 
@@ -74,5 +73,15 @@ describe("entriesToConfig", () => {
 
     expect(Object.keys(before)).toEqual(["a", "b"]);
     expect(Object.keys(after)).toEqual(["a", "b"]);
+  });
+
+  it("merges edited strings without changing opaque values", () => {
+    const original = { region: "us-east1", retries: 3, nested: { keep: true } };
+
+    expect(entriesToConfig([{ key: "region", value: "us-west1" }], original)).toEqual({
+      retries: 3,
+      nested: { keep: true },
+      region: "us-west1",
+    });
   });
 });

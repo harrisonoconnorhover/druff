@@ -9,7 +9,7 @@ import {
   type Node,
   type NodeChange,
 } from "@xyflow/react";
-import type { PipelineNodeData, PipelineEdgeData } from "@/lib/pipeline-graph";
+import type { PipelineNodeData, PipelineEdgeData, Trigger } from "@/lib/pipeline-graph";
 
 /**
  * Single source of truth for the canvas graph (nodes + edges). Owns exactly two things: the
@@ -19,6 +19,10 @@ import type { PipelineNodeData, PipelineEdgeData } from "@/lib/pipeline-graph";
  * palette/inspector-specific state — see DRUFF-1's design for the full rationale.
  */
 export type GraphState = {
+  /** Name carried into local draft export/source view; preserved across import and autosave. */
+  graphName: string;
+  /** Canonical graph-level trigger, preserved even though this editor has no graph-trigger UI. */
+  graphTrigger?: Trigger;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
   /** Applies React Flow's own node changes (select/drag/dimension/remove/…) via `applyNodeChanges`. */
@@ -46,17 +50,25 @@ export type GraphState = {
    * incremental edit, so this bypasses React Flow's `applyNodeChanges`/`applyEdgeChanges`
    * pipeline entirely rather than synthesizing a change list for it.
    */
-  setGraph: (nodes: Node<PipelineNodeData>[], edges: Edge<PipelineEdgeData>[]) => void;
+  setGraph: (
+    nodes: Node<PipelineNodeData>[],
+    edges: Edge<PipelineEdgeData>[],
+    graphName?: string,
+    graphTrigger?: Trigger,
+  ) => void;
 };
 
 /**
  * Placeholder graph proving the canvas end-to-end (drag, pan/zoom, redraw an edge) — not a real
- * pipeline. Real graphs will come from Dander's pipeline-graph contract once that's wired up.
+ * pipeline. A current hosted Dander project can replace it through the one-way manifest preview.
  */
 export const SEED_GRAPH: {
+  name: string;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
+  trigger?: Trigger;
 } = {
+  name: "druff-placeholder",
   nodes: [
     {
       id: "1",
@@ -89,10 +101,14 @@ export const SEED_GRAPH: {
  * `createStore(createGraphState(fixture))` with no shared mutable state and no DOM/React needed.
  */
 export function createGraphState(seed: {
+  name?: string;
   nodes: Node<PipelineNodeData>[];
   edges: Edge<PipelineEdgeData>[];
+  trigger?: Trigger;
 }): StateCreator<GraphState> {
   return (set, get) => ({
+    graphName: seed.name ?? "untitled-pipeline",
+    graphTrigger: seed.trigger,
     nodes: seed.nodes,
     edges: seed.edges,
 
@@ -135,8 +151,13 @@ export function createGraphState(seed: {
       });
     },
 
-    setGraph: (nodes, edges) => {
-      set({ nodes, edges });
+    setGraph: (nodes, edges, graphName, graphTrigger) => {
+      set((state) => ({
+        nodes,
+        edges,
+        graphName: graphName ?? state.graphName,
+        graphTrigger,
+      }));
     },
   });
 }

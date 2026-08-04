@@ -193,7 +193,7 @@ describe("graph-store", () => {
     expect(selectSelectedEdge(store.getState())).toBeNull();
   });
 
-  it("setGraph wholesale-replaces nodes and edges (DRUFF-5 hydration/import)", () => {
+  it("setGraph wholesale-replaces nodes, edges, and the imported draft name", () => {
     const store = makeStore();
     const nextNodes: Node<PipelineNodeData>[] = [
       {
@@ -205,8 +205,9 @@ describe("graph-store", () => {
     ];
     const nextEdges = [{ id: "e-z", source: "z", target: "z" }];
 
-    store.getState().setGraph(nextNodes, nextEdges);
+    store.getState().setGraph(nextNodes, nextEdges, "imported-project");
 
+    expect(store.getState().graphName).toBe("imported-project");
     expect(store.getState().nodes).toEqual(nextNodes);
     expect(store.getState().edges).toEqual(nextEdges);
   });
