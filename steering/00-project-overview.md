@@ -26,11 +26,22 @@ below.
 
 ## Contract with Dander
 
-- TODO: how is the pipeline-graph schema shared? Likely candidate: Dander exports
-  `PipelineGraph.model_json_schema()` (Pydantic) as a versioned artifact Druff consumes, rather
-  than Druff importing Dander's Python types directly.
-- TODO: how does Druff read/write actual graph files during development — talk to a running
-  Dander instance, a local file, or both?
+- **Schema sharing:** no shared/generated artifact yet — Druff hand-mirrors Dander's on-disk
+  `PipelineGraph` shape as Zod schemas (`src/lib/pipeline-graph/schema.ts`), verified by hand
+  against Dander's `src/dander/pipeline/graph.py`/`node_config.py`/`request_spec.py`. This is a
+  manually-synced mirror, not a generated one — it can and does drift when Dander's pipeline
+  package changes (e.g. Dander's 2026-08-03 update added `Node.trigger`/`.cursor`/`.visual`,
+  `TransformationKind.custom_code`, and `WriteMode.replace`, none of which are mirrored yet beyond
+  `Node.visual.position`, added for the graph bridge below). Revisit generating the mirror from
+  Dander's `PipelineGraph.model_json_schema()` if drift becomes a recurring problem.
+- **Read/write during development:** Dander now ships a local, loopback-only HTTP bridge for
+  exactly this (`dander graph serve --file ...`, `dander.pipeline.graph_service`) —
+  `GET`/`PUT /v1/graph` on `127.0.0.1:8765` with ETag/If-Match optimistic concurrency, one
+  operator-selected graph file, ID token never leaves the browser. Druff's client is
+  `src/lib/persistence/dander-graph-client.ts`, wired into `GraphToolbar`'s "Open from
+  Dander"/"Save to Dander". This is explicit open/save, not autosave — deliberately distinct from
+  the existing debounced-`localStorage` persistence (`src/lib/persistence/graph-persistence.ts`),
+  which remains the default/offline path.
 
 ## Modules (target architecture)
 
@@ -74,6 +85,18 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-03 — **Dander's local graph bridge is explicit open/save, not a `GraphPersistence`
+  autosave backend** — Dander shipped `dander graph serve` / `GET`+`PUT /v1/graph` (ETag/If-Match
+  optimistic concurrency) specifically for Druff, resolving the "how does Druff read/write actual
+  graph files" TODO. Rather than forcing it into the existing synchronous, debounced-autosave
+  `GraphPersistence` seam (`localStorage`-shaped), it got its own async client
+  (`dander-graph-client.ts`) and explicit toolbar actions ("Open from Dander"/"Save to Dander"),
+  matching the bridge's own documented contract ("explicit open/save, revision conflict
+  protection") and leaving `localStorage` as the default/offline path. The schema-mirror TODO is
+  still open beyond `Node.visual.position` (added only because the graph bridge's own shipped
+  example, `graphs/greenhouse_jobs.yaml`, uses it) — `Node.trigger`/`.cursor`, `TransformationKind.
+  custom_code`, and `WriteMode.replace` are known, not-yet-mirrored drift; see "Contract with
+  Dander" above.
 - 2026-07-22 — **Druff never executes user code** — custom connector/transform snippets are
   authored and stored, never run client-side. Keeps the frontend genuinely lightweight and avoids
   running arbitrary user Python/SQL in the browser; execution is Dander's job.

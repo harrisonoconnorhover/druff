@@ -5,6 +5,7 @@ import {
   computeDefaultLayout,
   extractLayout,
   graphToCanvas,
+  withVisualPositions,
 } from "@/lib/pipeline-graph/canvas-convert";
 import type { PipelineNodeData } from "@/lib/pipeline-graph/canvas-types";
 import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
@@ -240,5 +241,47 @@ describe("extractLayout", () => {
       src: { x: 10, y: 20 },
       tgt: { x: 300, y: 20 },
     });
+  });
+});
+
+describe("withVisualPositions", () => {
+  it("overlays each graph node's visual.position from the matching canvas node's position", () => {
+    const graph = canvasToGraph([SOURCE_NODE, TARGET_NODE], [], "g");
+
+    const withVisual = withVisualPositions(graph, [SOURCE_NODE, TARGET_NODE]);
+
+    expect(withVisual.nodes[0].visual).toEqual({
+      position: { x: 10, y: 20 },
+      color: null,
+      icon: null,
+    });
+    expect(withVisual.nodes[1].visual).toEqual({
+      position: { x: 300, y: 20 },
+      color: null,
+      icon: null,
+    });
+  });
+
+  it("matches by node id, independent of array order", () => {
+    const graph = canvasToGraph([SOURCE_NODE, TARGET_NODE], [], "g");
+
+    const withVisual = withVisualPositions(graph, [TARGET_NODE, SOURCE_NODE]);
+
+    expect(withVisual.nodes.find((n) => n.id === "src")?.visual?.position).toEqual({
+      x: 10,
+      y: 20,
+    });
+    expect(withVisual.nodes.find((n) => n.id === "tgt")?.visual?.position).toEqual({
+      x: 300,
+      y: 20,
+    });
+  });
+
+  it("leaves a graph node with no matching canvas node unchanged", () => {
+    const graph = canvasToGraph([SOURCE_NODE], [], "g");
+
+    const withVisual = withVisualPositions(graph, []);
+
+    expect(withVisual.nodes[0].visual).toBeUndefined();
   });
 });

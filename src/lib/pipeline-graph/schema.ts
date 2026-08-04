@@ -48,6 +48,26 @@ function withConfigParamsAlias(input: unknown): unknown {
   return input;
 }
 
+/** A 2-D canvas coordinate (Dander's `Position`). */
+export const PositionSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+export type Position = z.infer<typeof PositionSchema>;
+
+/**
+ * Presentation/layout hints for one node (Dander's `NodeVisual`, `graph.py`). Inert and
+ * additive-only on Dander's side; Druff mirrors just enough of it (`position`) to seed the
+ * canvas's own `GraphLayout` sidecar from a Dander-authored graph that has no separate layout
+ * file — see `canvas-convert.ts`'s `graphToCanvas` fallback order.
+ */
+export const NodeVisualSchema = z.object({
+  position: PositionSchema.nullable().default(null),
+  color: z.string().nullable().default(null),
+  icon: z.string().nullable().default(null),
+});
+export type NodeVisual = z.infer<typeof NodeVisualSchema>;
+
 /** A single node in a pipeline graph (Dander's `Node`). */
 export const PipelineNodeSchema = z.preprocess(
   withConfigParamsAlias,
@@ -57,6 +77,7 @@ export const PipelineNodeSchema = z.preprocess(
     name: z.string(),
     config: z.record(z.string(), z.unknown()).default({}),
     fields: z.array(NodeFieldSchema).default([]),
+    visual: NodeVisualSchema.optional(),
   }),
 );
 export type PipelineNode = z.infer<typeof PipelineNodeSchema>;

@@ -111,7 +111,11 @@ function graphNodeToCanvasNode(
   layout: GraphLayout | undefined,
   fallbackLayout: GraphLayout,
 ): Node<PipelineNodeData> {
-  const position = layout?.[node.id] ?? fallbackLayout[node.id];
+  // Prefers, in order: a supplied Druff layout sidecar; the node's own Dander-authored
+  // `visual.position` (present on a graph opened straight from Dander with no separate Druff
+  // sidecar, e.g. via the Dander graph bridge — `dander-graph-client.ts`); the deterministic
+  // left-to-right fallback. `visual` is otherwise inert/presentation-only on Dander's side.
+  const position = layout?.[node.id] ?? node.visual?.position ?? fallbackLayout[node.id];
   // Inverse of `nodeToGraphNode`'s connector mapping: a `type` matching a registered connector's
   // `danderType` re-derives `connectorId`, so a saved Greenhouse node is recognized as one again on
   // load (round-trips through `canvasToGraph`/`graphToCanvas`, not just a fresh drag-drop).
@@ -181,4 +185,33 @@ export function extractLayout(nodes: Node<PipelineNodeData>[]): GraphLayout {
     layout[node.id] = { x: node.position.x, y: node.position.y };
   }
   return layout;
+}
+
+/**
+ * Overlays each node's current canvas position as its Dander `visual.position` — for the one
+ * caller that actually has a Dander-native place to put it: the Dander graph bridge
+ * (`dander-graph-client.ts`'s `saveDanderGraph`), whose `Node.visual` (DANDER-19) is a real field
+ * on the graph it's saving back to. `canvasToGraph` itself deliberately never does this (see this
+ * file's module doc comment) — Druff's own `GraphLayout` sidecar stays the source of truth for
+ * every other consumer (localStorage, file export/import), so this is applied as an explicit,
+ * separate step only on the path that talks to Dander.
+ *
+ * Matches nodes by id (not array position), same as `extractLayout`, so callers don't have to
+ * guarantee `graph`'s node order lines up with `nodes`'. A `graph` node absent from `nodes` (should
+ * not happen for a graph produced by `canvasToGraph(nodes, ...)`) is left unchanged.
+ */
+export function withVisualPositions(
+  graph: PipelineGraph,
+  nodes: Node<PipelineNodeData>[],
+): PipelineGraph {
+  const positions = new Map(
+    nodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }]),
+  );
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => {
+      const position = positions.get(node.id);
+      return position ? { ...node, visual: { position, color: null, icon: null } } : node;
+    }),
+  };
 }

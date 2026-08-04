@@ -7,6 +7,8 @@
 
 export {
   NodeFieldSchema,
+  PositionSchema,
+  NodeVisualSchema,
   PipelineNodeSchema,
   TransformationKindSchema,
   TransformationSchema,
@@ -26,6 +28,8 @@ export {
 } from "@/lib/pipeline-graph/schema";
 export type {
   NodeField,
+  Position,
+  NodeVisual,
   PipelineNode,
   TransformationKind,
   Transformation,
@@ -65,6 +69,7 @@ export {
   graphToCanvas,
   extractLayout,
   computeDefaultLayout,
+  withVisualPositions,
 } from "@/lib/pipeline-graph/canvas-convert";
 
 export { validateStructure, validateFieldWiring } from "@/lib/pipeline-graph/graph-validation";
