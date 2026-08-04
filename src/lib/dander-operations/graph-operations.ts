@@ -40,6 +40,7 @@ export const GraphOperationsStatusSchema = z.discriminatedUnion("enabled", [
     enabled: z.literal(true),
     graph_name: z.string().min(1),
     revision: z.string().min(1),
+    deployment_preview_enabled: z.boolean().optional(),
     binding: GraphOperationBindingSchema,
     execution: CloudRunExecutionSchema.nullable(),
     run: DanderRunSchema.nullable(),
@@ -57,9 +58,22 @@ const GraphRunResultSchema = z.object({
   execution: CloudRunExecutionSchema,
 });
 
+const GraphDeploymentPreviewSchema = z.object({
+  revision: z.string().min(1),
+  candidate_image: z.string().min(1).max(512),
+  plan_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  plan_summary: z.string().min(1).max(256),
+  plan_text: z
+    .string()
+    .min(1)
+    .max(2 * 1024 * 1024),
+  affected_jobs: z.array(z.string().min(1)).min(1),
+});
+
 export type GraphOperationsStatus = z.infer<typeof GraphOperationsStatusSchema>;
 export type GraphValidationResult = z.infer<typeof GraphValidationResultSchema>;
 export type GraphRunResult = z.infer<typeof GraphRunResultSchema>;
+export type GraphDeploymentPreview = z.infer<typeof GraphDeploymentPreviewSchema>;
 
 export class GraphOperationsError extends Error {
   readonly status: number | null;
@@ -77,6 +91,7 @@ export interface GraphOperationsClient {
   status(): Promise<GraphOperationsStatus>;
   validate(revision: string): Promise<GraphValidationResult>;
   run(revision: string): Promise<GraphRunResult>;
+  previewDeployment(revision: string): Promise<GraphDeploymentPreview>;
 }
 
 /**
@@ -122,6 +137,17 @@ export class DanderApiGraphOperations implements GraphOperationsClient {
         headers: { Accept: "application/json", "If-Match": revision },
       },
       GraphRunResultSchema,
+    );
+  }
+
+  async previewDeployment(revision: string): Promise<GraphDeploymentPreview> {
+    return this.request(
+      "/v1/graph/deployment-preview",
+      {
+        method: "POST",
+        headers: { Accept: "application/json", "If-Match": revision },
+      },
+      GraphDeploymentPreviewSchema,
     );
   }
 

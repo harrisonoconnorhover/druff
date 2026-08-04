@@ -7,7 +7,9 @@ Druff opens and saves one graph file through Dander's localhost API. Dander owns
 validation, conflict detection, and atomic filesystem writes. When the operator binds that graph
 to one manifest pipeline, Druff can also validate it, manually run its already-deployed Cloud Run
 job, and show compact execution/run-ledger status. A version-1 `dander.yaml` can still be imported
-as a detached, one-way visualization; Druff never writes that manifest or deploys it.
+as a detached, one-way visualization. When Dander explicitly enables it with complete operator
+inputs, Druff can also request a source-free candidate and display its non-applyable Terraform
+plan; Druff never writes the manifest or applies infrastructure.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
@@ -61,6 +63,13 @@ opened graph is saved and no execution is active. Run uses the operator's local 
 and targets only the fixed job Dander derived at startup. Use Refresh to read completion and the
 latest Dander run-ledger result. These controls do not deploy edits, write `dander.yaml`, enable a
 schedule, or expose cloud credentials to the browser.
+
+To preview the deployment impact of a saved graph, restart the same command with
+`--enable-deployment-preview`, the current billing/cost-guard inputs, and an explicit
+`--failure-alert-email`. **Build candidate & plan** pushes an Artifact Registry candidate and shows
+the exact full-manifest Terraform plan, including every job sharing that image. Save itself remains
+file-only. The temporary binary plan is deleted by Dander; Druff cannot apply it or alter a
+schedule.
 
 To visualize a hosted Dander project manifest, choose **Import graph or dander.yaml** and select its
 `dander.yaml`. Druff draws each schedule, source, and selected model. Exported `.druff.yaml`/JSON
@@ -130,5 +139,5 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 
 Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
 validation, source view, Greenhouse connector configuration, one-way hosted-manifest preview, and
-manual execution/status for one operator-bound deployed graph. Manifest write-back and deployment
-are not implemented.
+manual execution/status, and an explicit source-free candidate/full-manifest plan for one
+operator-bound graph. Manifest write-back and Terraform apply are not implemented.

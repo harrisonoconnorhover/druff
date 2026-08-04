@@ -6,6 +6,7 @@ import {
 
 const STATUS = {
   enabled: true,
+  deployment_preview_enabled: true,
   graph_name: "greenhouse-jobs",
   revision: "revision-1",
   binding: {
@@ -58,7 +59,7 @@ describe("DanderApiGraphOperations", () => {
     });
   });
 
-  it("forwards the exact opened revision to validate and run", async () => {
+  it("forwards the exact opened revision to validate, run, and preview", async () => {
     const validateResult = {
       valid: true,
       graph_name: STATUS.graph_name,
@@ -68,14 +69,25 @@ describe("DanderApiGraphOperations", () => {
     const runResult = {
       execution: { ...STATUS.execution, state: "starting", completed_at: null },
     };
+    const previewResult = {
+      revision: "revision-1",
+      candidate_image:
+        "us-central1-docker.pkg.dev/proof-project/dander/dander@sha256:" + "a".repeat(64),
+      plan_sha256: "b".repeat(64),
+      plan_summary: "Plan: 0 to add, 1 to change, 0 to destroy.",
+      plan_text: "exact human plan",
+      affected_jobs: ["dander-greenhouse-graph"],
+    };
     const fetchOperations = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(JSON.stringify(validateResult), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify(runResult), { status: 202 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify(runResult), { status: 202 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(previewResult), { status: 200 }));
     const operations = new DanderApiGraphOperations("http://127.0.0.1:8765", fetchOperations);
 
     await expect(operations.validate('"revision-1"')).resolves.toEqual(validateResult);
     await expect(operations.run('"revision-1"')).resolves.toEqual(runResult);
+    await expect(operations.previewDeployment('"revision-1"')).resolves.toEqual(previewResult);
 
     expect(fetchOperations).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8765/v1/graph/validate", {
       method: "POST",
@@ -85,6 +97,14 @@ describe("DanderApiGraphOperations", () => {
       method: "POST",
       headers: { Accept: "application/json", "If-Match": '"revision-1"' },
     });
+    expect(fetchOperations).toHaveBeenNthCalledWith(
+      3,
+      "http://127.0.0.1:8765/v1/graph/deployment-preview",
+      {
+        method: "POST",
+        headers: { Accept: "application/json", "If-Match": '"revision-1"' },
+      },
+    );
   });
 
   it("surfaces an actionable API error but never echoes an unvalidated body", async () => {

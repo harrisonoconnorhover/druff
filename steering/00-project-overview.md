@@ -76,6 +76,11 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-04 — **Candidate planning is explicit, full-manifest, and non-applyable** — Save remains
+  file-only. Dander snapshots the saved revision, pushes a source-free candidate, and renders a
+  temporary human Terraform plan from operator-bound inputs. Druff displays all shared-image jobs
+  but has no apply route, project chooser, scheduler control, or reusable binary plan.
+
 - 2026-08-03 — **Manual operations target one operator-bound deployed graph** — Druff forwards the
   clean opened revision to Dander for validation and manual execution, then displays compact Cloud
   Run and run-ledger status. Dander fixes every cloud identifier at startup; Druff does not deploy,

@@ -43,6 +43,7 @@ test("validates, runs, and inspects the already-deployed Dander graph", async ({
         headers,
         body: JSON.stringify({
           enabled: true,
+          deployment_preview_enabled: true,
           graph_name: GRAPH.name,
           revision: "revision-1",
           binding: BINDING,
@@ -114,6 +115,22 @@ test("validates, runs, and inspects the already-deployed Dander graph", async ({
       });
       return;
     }
+    if (url.pathname === "/v1/graph/deployment-preview") {
+      await route.fulfill({
+        status: 200,
+        headers,
+        body: JSON.stringify({
+          revision: "revision-1",
+          candidate_image:
+            "us-central1-docker.pkg.dev/proof-project/dander/dander@sha256:" + "a".repeat(64),
+          plan_sha256: "b".repeat(64),
+          plan_summary: "Plan: 0 to add, 1 to change, 0 to destroy.",
+          plan_text: "exact human Terraform plan",
+          affected_jobs: ["dander-greenhouse-graph", "dander-hubspot-companies"],
+        }),
+      });
+      return;
+    }
     await route.fulfill({ status: 404, headers, body: JSON.stringify({ error: "Not found." }) });
   });
 
@@ -127,6 +144,13 @@ test("validates, runs, and inspects the already-deployed Dander graph", async ({
   await page.getByRole("button", { name: "Validate graph" }).click();
   await expect(page.getByText("Graph valid", { exact: true })).toBeVisible();
 
+  await expect(page.getByRole("button", { name: "Build candidate & plan" })).toBeEnabled();
+  await page.getByRole("button", { name: "Build candidate & plan" }).click();
+  await expect(page.getByText("Candidate image pushed; no infrastructure applied.")).toBeVisible();
+  await page.getByText("Review exact Terraform plan").click();
+  await expect(page.getByText("exact human Terraform plan")).toBeVisible();
+  await expect(page.getByText(/Shared image consumers:.*dander-hubspot-companies/)).toBeVisible();
+
   await page.getByRole("button", { name: "Run deployed job" }).click();
   await expect(page.getByText(/Cloud Run: starting/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Run deployed job" })).toBeDisabled();
@@ -134,6 +158,6 @@ test("validates, runs, and inspects the already-deployed Dander graph", async ({
   await page.getByRole("button", { name: "Refresh status" }).click();
   await expect(page.getByText(/Cloud Run: succeeded/)).toBeVisible();
   await expect(page.getByText(/Dander ledger: succeeded\/complete · 21 extracted/)).toBeVisible();
-  await expect(page.getByText(/does not deploy edits, write dander.yaml/)).toBeVisible();
-  expect(operationRevisions).toEqual([REVISION, REVISION]);
+  await expect(page.getByText(/never applies infrastructure or changes a schedule/)).toBeVisible();
+  expect(operationRevisions).toEqual([REVISION, REVISION, REVISION]);
 });
