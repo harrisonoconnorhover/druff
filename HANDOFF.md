@@ -2,46 +2,42 @@
 
 ## Finished
 
-- Added a separate **Build candidate & plan** action for a clean, saved Dander graph revision.
-- Displayed the immutable candidate digest, concise plan summary, all shared-image jobs, and exact human Terraform plan.
-- Hid stale preview results as soon as the graph becomes dirty or its revision changes.
-- Kept Save file-only and kept deployment, apply, scheduling, project selection, and cloud inputs out of Druff.
-- Exercised the complete action against the retained Dander project without deploying the candidate.
+- Added strict dynamic connector discovery from Dander's `GET /v1/connectors` endpoint.
+- Added Salesforce to the palette without hardcoding Salesforce runtime behavior in Druff.
+- Seeded canonical connector/endpoint bindings and declared output fields on dropped plugin nodes.
+- Preserved static Greenhouse for offline use and lossless generic-node behavior when discovery fails.
+- Proved dynamic Salesforce drag, inspect, and conditional save through Playwright.
 
 ## Try It
 
 ```bash
-dander graph serve --file /path/to/graphs/greenhouse_jobs.yaml \
-  --config /path/to/dander.yaml --pipeline greenhouse_jobs_graph \
-  --project YOUR_PROJECT --enable-deployment-preview \
-  --failure-alert-email YOUR_ALERT_EMAIL --billing-account YOUR_BILLING_ACCOUNT
-npm run dev
+dander graph serve --file /path/to/graph.yaml --config /path/to/dander.yaml
+pnpm dev
 ```
 
-Open from Dander, Refresh status, then choose **Build candidate & plan**.
+Choose **Open from Dander**; installed plugin connectors appear in the palette.
 
 ## Checks
 
 - ESLint, TypeScript, and Prettier checks passed.
-- `npm test` passed: 49 files and 556 tests.
-- All 7 Playwright workflows passed in Chromium; the production Next.js build passed.
-- Live UI proof displayed `0 add, 5 change, 0 destroy` and all five shared-image jobs.
-- Druff performed no apply, deployment, schedule, state, dataset, IAM, or secret mutation.
+- Full Vitest suite passed with two workers: 50 files and 563 tests.
+- All 8 Playwright workflows passed in Chromium, including dynamic Salesforce.
+- The production Next.js build passed.
+- Protected GitHub CI repeated the complete frontend suite and secret scan on Linux successfully.
 
 ## Decisions
 
-- The Dander server owns cloud authority; Druff sends only the saved graph revision.
-- Candidate planning is explicit and separate from both Save and Run deployed job.
-- The returned plan is human-readable and non-applyable; Druff never receives Terraform state or plan binaries.
+- Dander remains authoritative for installed plugins, graph validation, authentication, and runtime.
+- Druff consumes only presentation-safe descriptors and keeps one canonical PipelineGraph schema.
+- Discovery failures degrade to generic lossless source nodes instead of blocking graph access.
 
 ## Remaining
 
-- Push and open focused Dander and Druff PRs only after explicit approval.
-- Let protected CI repeat unit, browser, Linux build, and security checks.
-- Treat any candidate deployment as a separate, explicitly approved action.
+- Publish Dander `0.4.0rc2` and the plugin candidate only after explicit approval.
+- Run isolated GCP acceptance only after the separate reviewed-apply approval.
 
 ## Review First
 
-- `src/features/graph-operations/GraphOperationsBar.tsx`
-- `src/features/graph-operations/useGraphOperations.ts`
-- `e2e/dander-operations.spec.ts`
+- `src/features/connector-library/discovery.ts`
+- `src/features/connector-library/registry.ts`
+- `e2e/dynamic-salesforce-connector.spec.ts`

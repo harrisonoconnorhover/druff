@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { z } from "zod";
+import { NodeFieldSchema } from "@/lib/pipeline-graph/schema";
 
 /**
  * The connector-descriptor contract (DRUFF-6): the declarative shape a "pre-made connector" module
@@ -48,5 +49,13 @@ export const ConnectorDescriptorSchema = z.object({
     )
     .optional(),
   fields: z.array(ConnectorFieldDescriptorSchema),
+  outputFields: z.array(NodeFieldSchema).optional(),
+  plugin: z
+    .object({
+      distribution: z.string(),
+      version: z.string(),
+    })
+    .strict()
+    .optional(),
 });
 export type ConnectorDescriptor = z.infer<typeof ConnectorDescriptorSchema>;

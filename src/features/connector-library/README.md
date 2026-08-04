@@ -1,10 +1,10 @@
 # `connector-library`
 
 The **config-driven connector pattern** (DRUFF-6), proving the "Pre-made connectors" module from
-`steering/00-project-overview.md` once, with Greenhouse as its single concrete instance: "a form
-over each connector's known config shape, no code." Everything connector-specific lives here as
-**data**; everything generic is a small reusable engine other tickets consume at fixed seams.
-Adding connector #2..N later is "add a descriptor file + one registry entry," not new components.
+`steering/00-project-overview.md` once, with Greenhouse as its offline fallback and Dander's
+installed-plugin catalog as the dynamic source: "a form over each connector's known config shape,
+no code." Everything connector-specific arrives as validated **data**; everything generic is a
+small reusable engine other tickets consume at fixed seams.
 
 ## Files
 
@@ -14,9 +14,11 @@ Adding connector #2..N later is "add a descriptor file + one registry entry," no
   rather than rendering a broken form.
 - `descriptors/greenhouse.ts` — the Greenhouse source binding, as data. It emits Dander's canonical
   `type: source`, `connector: greenhouse_job_board`, and `endpoint: jobs` contract.
+- `discovery.ts` — strict client for Dander's presentation-only `GET /v1/connectors` contract. It
+  maps installed plugin endpoints to canonical source bindings and declared output fields.
 - `registry.ts` — `CONNECTOR_REGISTRY` plus `getConnector(id)` /
-  `getConnectorForDanderNode(type, config)` / `listConnectors()`. The one place other features read
-  pre-made connectors from.
+  `getConnectorForDanderNode(type, config)` / `listConnectors()`. Static and discovered entries
+  share this one lookup surface.
 - `defaultConfig.ts` — `defaultConfigForDescriptor`: seeds declared non-secret binding defaults
   for a freshly dropped connector node. No `secret` field ever gets a non-empty default.
 - `validateConnectorConfig.ts` — pure required-field validator; returns a field-key -> message map,
@@ -50,5 +52,5 @@ and never receive a default value. No fixture, test, or committed descriptor car
 
 ## Out of scope
 
-Druff never calls Greenhouse. It authors the binding; Dander resolves the connector YAML and owns
-execution, state, and deployment.
+Druff never calls Salesforce or Greenhouse. It authors the binding; Dander resolves the connector
+YAML and owns authentication, execution, state, and deployment.
