@@ -1,11 +1,12 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import {
   NODE_KINDS,
   PIPELINE_NODE_KINDS,
   isPipelineNodeKind,
 } from "@/features/pipeline-canvas/nodes/nodeKinds";
-import { listConnectors } from "@/features/connector-library/registry";
+import { getConnectorSnapshot, subscribeConnectors } from "@/features/connector-library/registry";
 import { cn } from "@/lib/utils";
 import type { PipelineNodeKind } from "@/lib/pipeline-graph";
 
@@ -59,6 +60,11 @@ export function parsePaletteDragPayload(raw: string): PaletteDragPayload | null 
  * live outside the canvas's `ReactFlowProvider`.
  */
 export function NodePalette() {
+  const connectors = useSyncExternalStore(
+    subscribeConnectors,
+    getConnectorSnapshot,
+    getConnectorSnapshot,
+  );
   return (
     <aside className="flex w-48 shrink-0 flex-col gap-2 border-r bg-muted/30 p-3">
       <h2 className="px-1 text-xs font-semibold text-muted-foreground uppercase">Node palette</h2>
@@ -90,7 +96,7 @@ export function NodePalette() {
         Connectors
       </h2>
       <ul className="flex flex-col gap-2">
-        {listConnectors().map((connector) => {
+        {connectors.map((connector) => {
           const { icon: KindIcon, accent } = NODE_KINDS[connector.kind];
           const Icon = connector.icon ?? KindIcon;
           return (

@@ -1,5 +1,8 @@
 import { GREENHOUSE_CONNECTOR } from "@/features/connector-library/descriptors/greenhouse";
-import type { ConnectorDescriptor } from "@/features/connector-library/descriptors/types";
+import {
+  ConnectorDescriptorSchema,
+  type ConnectorDescriptor,
+} from "@/features/connector-library/descriptors/types";
 
 /**
  * The one place the palette (DRUFF-2), node-factory, and graph converter (DRUFF-4) read pre-made
@@ -10,9 +13,45 @@ export const CONNECTOR_REGISTRY: Record<string, ConnectorDescriptor> = {
   [GREENHOUSE_CONNECTOR.id]: GREENHOUSE_CONNECTOR,
 };
 
+let discoveredConnectors: ConnectorDescriptor[] = [];
+let connectorSnapshot: ConnectorDescriptor[] = Object.values(CONNECTOR_REGISTRY);
+const listeners = new Set<() => void>();
+
+function rebuildSnapshot(): void {
+  const merged = new Map(
+    Object.values(CONNECTOR_REGISTRY).map((connector) => [connector.id, connector]),
+  );
+  for (const connector of discoveredConnectors) merged.set(connector.id, connector);
+  connectorSnapshot = Array.from(merged.values());
+}
+
+/** Replace the server-discovered connector set while retaining static offline fallbacks. */
+export function setDiscoveredConnectors(connectors: ConnectorDescriptor[]): void {
+  discoveredConnectors = connectors.map((connector) => ConnectorDescriptorSchema.parse(connector));
+  rebuildSnapshot();
+  for (const listener of listeners) listener();
+}
+
+/** Clear server-owned entries when discovery is unavailable or a different server is opened. */
+export function clearDiscoveredConnectors(): void {
+  discoveredConnectors = [];
+  rebuildSnapshot();
+  for (const listener of listeners) listener();
+}
+
+/** React external-store seam used by the palette without making the registry React-specific. */
+export function subscribeConnectors(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getConnectorSnapshot(): ConnectorDescriptor[] {
+  return connectorSnapshot;
+}
+
 /** Looks up a connector descriptor by Druff's internal/palette `id` (e.g. `"greenhouse"`). */
 export function getConnector(id: string): ConnectorDescriptor | undefined {
-  return CONNECTOR_REGISTRY[id];
+  return connectorSnapshot.find((connector) => connector.id === id);
 }
 
 /**
@@ -26,7 +65,7 @@ export function getConnectorForDanderNode(
 ): ConnectorDescriptor | undefined {
   const connectorName = config.connector;
   if (typeof connectorName !== "string") return undefined;
-  return Object.values(CONNECTOR_REGISTRY).find(
+  return connectorSnapshot.find(
     (connector) =>
       connector.danderType === danderType && connector.danderConnector === connectorName,
   );
@@ -34,5 +73,5 @@ export function getConnectorForDanderNode(
 
 /** All registered connectors, in registration order — what the palette lists as pre-made entries. */
 export function listConnectors(): ConnectorDescriptor[] {
-  return Object.values(CONNECTOR_REGISTRY);
+  return connectorSnapshot;
 }

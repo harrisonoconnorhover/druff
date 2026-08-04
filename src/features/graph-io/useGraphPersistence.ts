@@ -1,6 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  DanderApiConnectorDiscovery,
+  type ConnectorDiscovery,
+} from "@/features/connector-library/discovery";
+import {
+  clearDiscoveredConnectors,
+  setDiscoveredConnectors,
+} from "@/features/connector-library/registry";
 import { useGraphStore, type GraphState } from "@/lib/graph-store";
 import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph";
 import {
@@ -25,6 +33,8 @@ export type GraphPersistenceControls = {
 export type UseGraphPersistenceOptions = {
   /** Injectable seam for tests; defaults to Dander's localhost single-file graph API. */
   persistence?: GraphPersistence;
+  /** Optional connector-catalog seam. Injected graph-only tests omit discovery entirely. */
+  connectorDiscovery?: ConnectorDiscovery;
 };
 
 /**
@@ -38,6 +48,12 @@ export function useGraphPersistence(
   const persistenceRef = useRef<GraphPersistence | null>(null);
   if (persistenceRef.current === null) {
     persistenceRef.current = options.persistence ?? new DanderApiGraphPersistence();
+  }
+  const connectorDiscoveryRef = useRef<ConnectorDiscovery | null | undefined>(undefined);
+  if (connectorDiscoveryRef.current === undefined) {
+    connectorDiscoveryRef.current =
+      options.connectorDiscovery ??
+      (options.persistence === undefined ? new DanderApiConnectorDiscovery() : null);
   }
 
   const revisionRef = useRef<string | null>(null);
@@ -68,6 +84,16 @@ export function useGraphPersistence(
     setStatus("loading");
     setError(null);
     try {
+      const connectorDiscovery = connectorDiscoveryRef.current;
+      if (connectorDiscovery != null) {
+        try {
+          setDiscoveredConnectors(await connectorDiscovery.load());
+        } catch {
+          // A plugin catalog must never prevent canonical graph access. Unknown connectors load as
+          // ordinary source nodes and retain their complete config/fields on the next save.
+          clearDiscoveredConnectors();
+        }
+      }
       const document = await persistenceRef.current!.load();
       const restored = graphToCanvas(document.graph);
       applyingRemoteRef.current = true;

@@ -44,6 +44,7 @@ export function createNode(
       ...(connector && {
         connectorId: connector.id,
         config: defaultConfigForDescriptor(connector),
+        ...(connector.outputFields && { fields: connector.outputFields }),
       }),
     },
   };

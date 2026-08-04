@@ -11,6 +11,11 @@ as a detached, one-way visualization. When Dander explicitly enables it with com
 inputs, Druff can also request a source-free candidate and display its non-applyable Terraform
 plan; Druff never writes the manifest or applies infrastructure.
 
+When that manifest pins installed connector plugins, Druff discovers their presentation-safe
+descriptors from Dander and adds them to the palette dynamically. The first dynamic connector is
+Salesforce Accounts. Greenhouse remains a static fallback for offline/document-only authoring;
+Druff never receives API URLs, authentication settings, secret references, or credentials.
+
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
 
@@ -138,6 +143,7 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 ## Status
 
 Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
-validation, source view, Greenhouse connector configuration, one-way hosted-manifest preview, and
-manual execution/status, and an explicit source-free candidate/full-manifest plan for one
-operator-bound graph. Manifest write-back and Terraform apply are not implemented.
+validation, source view, static Greenhouse plus dynamically discovered connector configuration,
+one-way hosted-manifest preview, manual execution/status, and an explicit source-free
+candidate/full-manifest plan for one operator-bound graph. Manifest write-back and Terraform apply
+are not implemented.

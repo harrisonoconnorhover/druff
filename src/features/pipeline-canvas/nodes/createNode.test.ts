@@ -8,6 +8,13 @@ import {
 import { defaultTypeForKind } from "@/lib/pipeline-graph";
 import { GREENHOUSE_CONNECTOR } from "@/features/connector-library/descriptors/greenhouse";
 import { defaultConfigForDescriptor } from "@/features/connector-library/defaultConfig";
+import {
+  clearDiscoveredConnectors,
+  setDiscoveredConnectors,
+} from "@/features/connector-library/registry";
+import { beforeEach } from "vitest";
+
+beforeEach(clearDiscoveredConnectors);
 
 describe("createNode", () => {
   it.each(PIPELINE_NODE_KINDS)("builds a well-formed %s node", (kind) => {
@@ -49,6 +56,50 @@ describe("createNode", () => {
 
     expect(node.data.connectorId).toBeUndefined();
     expect(node.data.config).toBeUndefined();
+  });
+
+  it("seeds a discovered connector's binding and declared output fields", () => {
+    setDiscoveredConnectors([
+      {
+        id: "salesforce",
+        name: "Salesforce",
+        kind: "source",
+        danderType: "source",
+        danderConnector: "salesforce",
+        fields: [
+          {
+            key: "connector",
+            label: "Dander connector",
+            type: "text",
+            required: true,
+            defaultValue: "salesforce",
+          },
+          {
+            key: "endpoint",
+            label: "Endpoint",
+            type: "text",
+            required: true,
+            defaultValue: "accounts",
+          },
+        ],
+        outputFields: [
+          {
+            name: "Id",
+            type: "STRING",
+            nullable: false,
+            description: "ID",
+            metadata: {},
+          },
+        ],
+      },
+    ]);
+
+    const node = createNode("source", { x: 0, y: 0 }, "id", "salesforce");
+
+    expect(node.data.config).toEqual({ connector: "salesforce", endpoint: "accounts" });
+    expect(node.data.fields).toEqual([
+      expect.objectContaining({ name: "Id", type: "STRING", nullable: false }),
+    ]);
   });
 });
 
