@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, Play, RefreshCw } from "lucide-react";
+import { CircleCheck, PackageSearch, Play, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { GraphOperationControls } from "@/features/graph-operations/useGraphOperations";
 
@@ -36,6 +36,14 @@ export function GraphOperationsBar({ operations }: GraphOperationsBarProps) {
           <Play /> Run deployed job
         </Button>
         <Button
+          variant="outline"
+          size="sm"
+          disabled={!operations.canPreviewDeployment}
+          onClick={() => void operations.previewDeployment()}
+        >
+          <PackageSearch /> Build candidate &amp; plan
+        </Button>
+        <Button
           variant="ghost"
           size="sm"
           disabled={!operations.canRefresh}
@@ -60,9 +68,28 @@ export function GraphOperationsBar({ operations }: GraphOperationsBarProps) {
       </div>
 
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Runs the manifest-bound job that is already deployed. It does not deploy edits, write
-        dander.yaml, or change a schedule.
+        Run targets the manifest-bound job already deployed. Candidate preview explicitly pushes a
+        source-free image and plans the full manifest, but never applies infrastructure or changes a
+        schedule.
       </p>
+      {operations.deploymentPreview ? (
+        <div className="mt-2 rounded-md border bg-background p-3 text-xs">
+          <div className="font-medium">Candidate image pushed; no infrastructure applied.</div>
+          <div className="mt-1 break-all font-mono text-[11px]">
+            {operations.deploymentPreview.candidate_image}
+          </div>
+          <div className="mt-1 text-muted-foreground">
+            {operations.deploymentPreview.plan_summary} Shared image consumers:{" "}
+            {operations.deploymentPreview.affected_jobs.join(", ")}.
+          </div>
+          <details className="mt-2">
+            <summary className="cursor-pointer font-medium">Review exact Terraform plan</summary>
+            <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-slate-950 p-3 text-[11px] text-slate-100">
+              {operations.deploymentPreview.plan_text}
+            </pre>
+          </details>
+        </div>
+      ) : null}
       {operations.error ? (
         <p className="mt-1 text-destructive" role="alert">
           {operations.error}
@@ -76,6 +103,7 @@ function pendingLabel(operations: GraphOperationControls): string {
   if (operations.pending === "refresh") return "Refreshing…";
   if (operations.pending === "validate") return "Validating…";
   if (operations.pending === "run") return "Starting…";
+  if (operations.pending === "preview") return "Building candidate and planning…";
   if (operations.validation === "valid") return "Graph valid";
   return "";
 }

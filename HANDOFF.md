@@ -2,43 +2,46 @@
 
 ## Finished
 
-- Added Validate, Run deployed job, and Refresh status controls for one Dander-bound graph.
-- Displayed the fixed project/pipeline/job binding, Cloud Run execution, and Dander run-ledger result.
-- Required a clean opened ETag and blocked detached, dirty, conflicted, or active runs.
-- Added Zod-validated API boundaries without exposing credentials or row-level data.
-- Kept manifest write-back, deployment, scheduler control, and arbitrary cloud browsing out of scope.
+- Added a separate **Build candidate & plan** action for a clean, saved Dander graph revision.
+- Displayed the immutable candidate digest, concise plan summary, all shared-image jobs, and exact human Terraform plan.
+- Hid stale preview results as soon as the graph becomes dirty or its revision changes.
+- Kept Save file-only and kept deployment, apply, scheduling, project selection, and cloud inputs out of Druff.
+- Exercised the complete action against the retained Dander project without deploying the candidate.
 
 ## Try It
 
 ```bash
-dander graph serve --file /path/to/graphs/greenhouse_jobs.yaml --config /path/to/dander.yaml \
-  --pipeline greenhouse_jobs_graph --project my-gcp-project
-pnpm dev
+dander graph serve --file /path/to/graphs/greenhouse_jobs.yaml \
+  --config /path/to/dander.yaml --pipeline greenhouse_jobs_graph \
+  --project YOUR_PROJECT --enable-deployment-preview \
+  --failure-alert-email YOUR_ALERT_EMAIL --billing-account YOUR_BILLING_ACCOUNT
+npm run dev
 ```
 
-Open from Dander, Refresh status, Validate graph, Run deployed job, then Refresh status again.
+Open from Dander, Refresh status, then choose **Build candidate & plan**.
 
 ## Checks
 
-- `pnpm lint` and `pnpm typecheck` passed.
-- `pnpm test` passed: 49 files and 556 tests.
+- ESLint, TypeScript, and Prettier checks passed.
+- `npm test` passed: 49 files and 556 tests.
 - All 7 Playwright workflows passed in Chromium; the production Next.js build passed.
-- No new dependency, secret, deployment path, or cloud mutation was added by Druff.
-- Independent final review passed with no material findings.
+- Live UI proof displayed `0 add, 5 change, 0 destroy` and all five shared-image jobs.
+- Druff performed no apply, deployment, schedule, state, dataset, IAM, or secret mutation.
 
 ## Decisions
 
-- The operator selects all cloud authority when starting Dander; Druff only displays the binding.
-- Operations require the saved graph revision, so unsaved canvas edits are never implied to have run.
-- Completion refresh is explicit rather than a background polling/control-plane feature.
+- The Dander server owns cloud authority; Druff sends only the saved graph revision.
+- Candidate planning is explicit and separate from both Save and Run deployed job.
+- The returned plan is human-readable and non-applyable; Druff never receives Terraform state or plan binaries.
 
 ## Remaining
 
-- Merge through protected CI.
-- Exercise the UI against the retained paused graph job and reconfirm data/infra invariants.
+- Push and open focused Dander and Druff PRs only after explicit approval.
+- Let protected CI repeat unit, browser, Linux build, and security checks.
+- Treat any candidate deployment as a separate, explicitly approved action.
 
 ## Review First
 
-- `src/lib/dander-operations/graph-operations.ts`
-- `src/features/graph-operations/useGraphOperations.ts`
 - `src/features/graph-operations/GraphOperationsBar.tsx`
+- `src/features/graph-operations/useGraphOperations.ts`
+- `e2e/dander-operations.spec.ts`

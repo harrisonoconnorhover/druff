@@ -31,8 +31,8 @@ export function GraphEditor() {
         role="status"
       >
         PipelineGraph editor. Dander validates and writes an explicitly served graph file;
-        dander.yaml imports remain detached previews. Manual execution targets only the bound,
-        already-deployed job and never deploys canvas changes.
+        dander.yaml imports remain detached previews. Candidate planning is explicit, pushes only a
+        source-free image, and cannot apply its temporary Terraform plan.
       </div>
       <div className="min-h-0 flex-1">
         {viewMode === "canvas" ? <PipelineCanvas /> : <SourceView />}

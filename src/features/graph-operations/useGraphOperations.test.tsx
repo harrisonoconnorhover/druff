@@ -8,6 +8,7 @@ import type {
 
 const STATUS: Extract<GraphOperationsStatus, { enabled: true }> = {
   enabled: true,
+  deployment_preview_enabled: true,
   graph_name: "greenhouse-jobs",
   revision: "revision-1",
   binding: {
@@ -40,6 +41,15 @@ function client(): GraphOperationsClient {
         log_uri: null,
       },
     })),
+    previewDeployment: vi.fn(async (revision: string) => ({
+      revision,
+      candidate_image:
+        "us-central1-docker.pkg.dev/proof-project/dander/dander@sha256:" + "a".repeat(64),
+      plan_sha256: "b".repeat(64),
+      plan_summary: "Plan: 0 to add, 1 to change, 0 to destroy.",
+      plan_text: "exact human plan",
+      affected_jobs: ["dander-greenhouse-graph"],
+    })),
   };
 }
 
@@ -58,6 +68,7 @@ describe("useGraphOperations", () => {
     await waitFor(() => expect(result.current.status).toEqual(STATUS));
     expect(result.current.canValidate).toBe(true);
     expect(result.current.canRun).toBe(true);
+    expect(result.current.canPreviewDeployment).toBe(true);
 
     await act(async () => result.current.validate());
     expect(operations.validate).toHaveBeenCalledWith('"revision-1"');
@@ -69,6 +80,10 @@ describe("useGraphOperations", () => {
       "starting",
     );
     expect(result.current.canRun).toBe(false);
+
+    await act(async () => result.current.previewDeployment());
+    expect(operations.previewDeployment).toHaveBeenCalledWith('"revision-1"');
+    expect(result.current.deploymentPreview?.plan_text).toBe("exact human plan");
   });
 
   it("cannot validate or run a detached or dirty graph", async () => {
@@ -85,12 +100,14 @@ describe("useGraphOperations", () => {
 
     expect(result.current.canValidate).toBe(false);
     expect(result.current.canRun).toBe(false);
+    expect(result.current.canPreviewDeployment).toBe(false);
 
     rerender({ revision: '"revision-1"', clean: false });
     await act(async () => result.current.refresh());
     await waitFor(() => expect(result.current.status).toEqual(STATUS));
     expect(result.current.canValidate).toBe(false);
     expect(result.current.canRun).toBe(false);
+    expect(result.current.canPreviewDeployment).toBe(false);
 
     await act(async () => result.current.run());
     expect(operations.run).not.toHaveBeenCalled();

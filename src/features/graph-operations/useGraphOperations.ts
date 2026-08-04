@@ -3,23 +3,27 @@
 import { useCallback, useRef, useState } from "react";
 import {
   DanderApiGraphOperations,
+  type GraphDeploymentPreview,
   type GraphOperationsClient,
   type GraphOperationsStatus,
 } from "@/lib/dander-operations/graph-operations";
 
-export type GraphOperationPending = "refresh" | "validate" | "run" | null;
+export type GraphOperationPending = "refresh" | "validate" | "run" | "preview" | null;
 
 export type GraphOperationControls = {
   status: GraphOperationsStatus | null;
   pending: GraphOperationPending;
   error: string | null;
   validation: "unknown" | "valid";
+  deploymentPreview: GraphDeploymentPreview | null;
   canRefresh: boolean;
   canValidate: boolean;
   canRun: boolean;
+  canPreviewDeployment: boolean;
   refresh: () => Promise<void>;
   validate: () => Promise<void>;
   run: () => Promise<void>;
+  previewDeployment: () => Promise<void>;
 };
 
 export type UseGraphOperationsOptions = {
@@ -49,6 +53,8 @@ export function useGraphOperations({
   const [errorRevision, setErrorRevision] = useState<string | null>(null);
   const [validation, setValidation] = useState<"unknown" | "valid">("unknown");
   const [validatedRevision, setValidatedRevision] = useState<string | null>(null);
+  const [deploymentPreview, setDeploymentPreview] = useState<GraphDeploymentPreview | null>(null);
+  const [previewRevision, setPreviewRevision] = useState<string | null>(null);
 
   const readStatus = useCallback(async (): Promise<void> => {
     if (revision === null) return;
@@ -115,6 +121,35 @@ export function useGraphOperations({
     }
   }, [graphIsClean, revision, status]);
 
+  const previewDeployment = useCallback(async (): Promise<void> => {
+    if (
+      revision === null ||
+      !graphIsClean ||
+      status?.enabled !== true ||
+      status.deployment_preview_enabled !== true
+    ) {
+      setError("Open and save a graph from a deployment-preview-enabled Dander service first.");
+      setErrorRevision(revision);
+      return;
+    }
+    setPending("preview");
+    setError(null);
+    setDeploymentPreview(null);
+    setPreviewRevision(null);
+    try {
+      const result = await clientRef.current!.previewDeployment(revision);
+      setDeploymentPreview(result);
+      setPreviewRevision(revision);
+      setValidation("valid");
+      setValidatedRevision(revision);
+    } catch (cause) {
+      setError(describeError(cause));
+      setErrorRevision(revision);
+    } finally {
+      setPending(null);
+    }
+  }, [graphIsClean, revision, status]);
+
   const attached = revision !== null;
   const visibleStatus = attached && statusRevision === revision ? status : null;
   const visiblePending = attached ? pending : null;
@@ -125,12 +160,21 @@ export function useGraphOperations({
     pending: visiblePending,
     error: attached && errorRevision === revision ? error : null,
     validation: attached && validatedRevision === revision ? validation : "unknown",
+    deploymentPreview:
+      attached && graphIsClean && previewRevision === revision ? deploymentPreview : null,
     canRefresh: attached && idle,
     canValidate: attached && graphIsClean && available && idle,
     canRun: attached && graphIsClean && available && idle && !isActive(visibleStatus),
+    canPreviewDeployment:
+      attached &&
+      graphIsClean &&
+      available &&
+      visibleStatus.deployment_preview_enabled === true &&
+      idle,
     refresh: readStatus,
     validate,
     run,
+    previewDeployment,
   };
 }
 
