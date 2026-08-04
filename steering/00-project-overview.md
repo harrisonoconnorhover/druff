@@ -76,6 +76,11 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-03 — **Manual operations target one operator-bound deployed graph** — Druff forwards the
+  clean opened revision to Dander for validation and manual execution, then displays compact Cloud
+  Run and run-ledger status. Dander fixes every cloud identifier at startup; Druff does not deploy,
+  write manifests, change schedules, or become a general GCP control panel.
+
 - 2026-08-03 — **Dander-backed single-file persistence with `PipelineGraph` canonical** — Druff
   uses explicit Open/Save through a loopback-only Dander API. The operator chooses one file when
   starting Dander; conditional writes prevent stale overwrites, and Dander remains the validation

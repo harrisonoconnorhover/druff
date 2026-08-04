@@ -15,6 +15,8 @@ export type GraphPersistenceStatus =
 export type GraphPersistenceControls = {
   status: GraphPersistenceStatus;
   error: string | null;
+  revision: string | null;
+  attached: boolean;
   open: () => Promise<void>;
   save: () => Promise<void>;
   detach: () => void;
@@ -46,6 +48,7 @@ export function useGraphPersistence(
   const changeVersionRef = useRef(0);
   const [status, setStatus] = useState<GraphPersistenceStatus>("disconnected");
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState<string | null>(null);
 
   useEffect(
     () =>
@@ -73,6 +76,7 @@ export function useGraphPersistence(
         .setGraph(restored.nodes, restored.edges, document.graph.name, document.graph.trigger);
       applyingRemoteRef.current = false;
       revisionRef.current = document.revision;
+      setRevision(document.revision);
       attachedRef.current = true;
       changeVersionRef.current = 0;
       baselineRef.current = serializeGraphState(useGraphStore.getState());
@@ -82,6 +86,7 @@ export function useGraphPersistence(
       applyingRemoteRef.current = false;
       attachedRef.current = false;
       revisionRef.current = null;
+      setRevision(null);
       baselineRef.current = null;
       lastSemanticRef.current = null;
       setStatus("error");
@@ -106,6 +111,7 @@ export function useGraphPersistence(
     try {
       const document = await persistenceRef.current!.save(graph, revision);
       revisionRef.current = document.revision;
+      setRevision(document.revision);
       baselineRef.current = JSON.stringify(document.graph);
       if (changeVersionRef.current === savedChangeVersion) {
         const restored = graphToCanvas(document.graph);
@@ -134,6 +140,7 @@ export function useGraphPersistence(
   const detach = useCallback(() => {
     attachedRef.current = false;
     revisionRef.current = null;
+    setRevision(null);
     baselineRef.current = null;
     lastSemanticRef.current = null;
     changeVersionRef.current = 0;
@@ -141,7 +148,7 @@ export function useGraphPersistence(
     setError(null);
   }, []);
 
-  return { status, error, open, save, detach };
+  return { status, error, revision, attached: revision !== null, open, save, detach };
 }
 
 function describeError(error: unknown): string {

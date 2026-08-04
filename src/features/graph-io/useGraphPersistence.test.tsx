@@ -32,6 +32,8 @@ describe("useGraphPersistence", () => {
 
     await act(async () => result.current.open());
     expect(result.current.status).toBe("clean");
+    expect(result.current.attached).toBe(true);
+    expect(result.current.revision).toBe('"revision-1"');
     expect(useGraphStore.getState().graphName).toBe("served-graph");
 
     act(() =>
@@ -51,6 +53,7 @@ describe("useGraphPersistence", () => {
       '"revision-1"',
     );
     expect(result.current.status).toBe("clean");
+    expect(result.current.revision).toBe('"revision-2"');
   });
 
   it("surfaces revision conflicts and never reports the graph as saved", async () => {
@@ -88,6 +91,8 @@ describe("useGraphPersistence", () => {
 
     expect(persistence.save).not.toHaveBeenCalled();
     expect(result.current.status).toBe("error");
+    expect(result.current.attached).toBe(false);
+    expect(result.current.revision).toBeNull();
     expect(result.current.error).toMatch(/open a graph/i);
   });
 });
