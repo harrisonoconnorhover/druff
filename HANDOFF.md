@@ -23,7 +23,7 @@ Choose **Open from Dander**; installed plugin connectors appear in the palette.
 - Full Vitest suite passed with two workers: 50 files and 563 tests.
 - All 8 Playwright workflows passed in Chromium, including dynamic Salesforce.
 - The production Next.js build passed.
-- Added GitHub CI to repeat the complete frontend suite and secret scan on Linux.
+- Protected GitHub CI repeated the complete frontend suite and secret scan on Linux successfully.
 
 ## Decisions
 
@@ -33,7 +33,6 @@ Choose **Open from Dander**; installed plugin connectors appear in the palette.
 
 ## Remaining
 
-- Complete local validation and open focused Dander, plugin, and Druff PRs.
 - Publish Dander `0.4.0rc2` and the plugin candidate only after explicit approval.
 - Run isolated GCP acceptance only after the separate reviewed-apply approval.
 
