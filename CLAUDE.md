@@ -5,9 +5,10 @@ Front-end companion to **Dander** (`../dander`), an open-source GCP-native EL(T)
 edges with field mappings/transformations/joins) explicitly as the storage format "behind a future
 drag-drop UI." Druff is that UI.
 
-> **Status:** scaffolding only. Steering + agent workforce ported from Dander and adapted; the
-> actual product scope, tech stack, and language-specific steering are **not yet defined** — see
-> the placeholders in `steering/00-project-overview.md`.
+> **Status:** working alpha. Druff edits canonical Dander graphs, discovers installed connectors
+> and supported operations, and uses Dander's operator-bound loopback service for persistence,
+> validation, execution/status, and non-applyable deployment previews. The compiled static UI is
+> also deployed on Cloud Run.
 
 ## Why a separate repo from Dander
 
@@ -86,7 +87,7 @@ steering/                 ← binding rules (overview, security, engineering, la
 .claude/workflows/        ← feature.js orchestration
 tickets/                  ← work items (markdown)
 scripts/                  ← dev tooling (watch_workflows.py — live workflow monitor)
-.env.example              ← secret KEYS only (real .env is git-ignored) — create once needed
+Dockerfile                ← source-free static production image
 ```
 
 ## Conventions for any agent working here

@@ -1,6 +1,7 @@
 # Druff
 
-Front-end companion to **[Dander](../dander)** — a visual editor for Dander's canonical
+Front-end companion to **[Dander](https://github.com/harrisonoconnorhover/dander)** — a visual
+editor for Dander's canonical
 `PipelineGraph` files (drag/drop nodes, wire connections, configure sources/transforms/writes).
 
 Druff opens and saves one graph file through Dander's localhost API. Dander owns parsing,

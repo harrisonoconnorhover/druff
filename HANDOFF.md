@@ -2,11 +2,12 @@
 
 ## Finished
 
-- Synchronized the fork checkout to `origin/main`.
-- Reconciled Josh's upstream graph-client commit while preserving its Git ancestry.
-- Retained Druff's newer unified Dander persistence, conflict, catalog, execution, and deployment
-  controls instead of adding a duplicate client and toolbar.
-- Recorded the reconciliation decision in the project overview.
+- Reconciled Josh's upstream graph-client ancestry into the unified Dander persistence path.
+- Deployed the source-free static interface at
+  <https://dander-druff-yos2b3gbca-uc.a.run.app> through reviewed Terraform.
+- Updated project and security guidance from scaffold placeholders to the implemented loopback
+  Dander boundary.
+- Corrected the repository's Dander link and current product status.
 
 ## Try It
 
@@ -18,25 +19,24 @@ pnpm dev
 ## Checks
 
 - ESLint, TypeScript, and Prettier passed.
-- Full Vitest suite: 56 files and 586 tests passed.
-- Production static build and all 10 Playwright workflows passed.
-- Source-free container build, non-root runtime, artifact-boundary, and HTTP checks passed.
-- `git diff --check` passed.
+- All 586 Vitest tests and the production static build passed.
+- Local Markdown links and `git diff --check` passed.
+- The retained Terraform record shows only the approved Druff service account and Cloud Run
+  service were added, followed by a no-drift plan.
 
 ## Decisions
 
-- `PipelineGraph` remains canonical and Dander remains the file, validation, and execution
-  authority.
-- Josh's explicit open/save intent is implemented by the existing `GraphPersistence` controller;
-  no parallel `dander-graph-client` abstraction is retained.
+- Druff remains a public static shell; Dander's exact-origin loopback service owns privileged
+  graph, execution, and planning operations.
+- No duplicate graph client, hosted privileged API, manifest write-back, or Terraform apply path.
 
 ## Remaining
 
-- Merge the focused pull request through protected CI.
-- Build and deploy the reconciled source-free image through one reviewed Terraform plan.
+- Use the hosted interface with an operator-started Dander graph service when interactive
+  authoring or execution is needed.
 
 ## Review First
 
+- `steering/01-security.md`
 - `steering/00-project-overview.md`
-- `src/lib/persistence/graph-persistence.ts`
-- `src/features/graph-io/useGraphPersistence.ts`
+- `README.md`
