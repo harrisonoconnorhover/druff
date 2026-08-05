@@ -2,9 +2,9 @@
 
 The **config-driven connector pattern** (DRUFF-6), proving the "Pre-made connectors" module from
 `steering/00-project-overview.md` once, with Greenhouse as its offline fallback and Dander's
-installed-plugin catalog as the dynamic source: "a form over each connector's known config shape,
-no code." Everything connector-specific arrives as validated **data**; everything generic is a
-small reusable engine other tickets consume at fixed seams.
+installed-plugin descriptors as the dynamic source: "a form over each connector's known config
+shape, no code." Everything connector-specific arrives as validated **data**; everything generic
+is a small reusable engine other tickets consume at fixed seams.
 
 ## Files
 
@@ -16,6 +16,10 @@ small reusable engine other tickets consume at fixed seams.
   `type: source`, `connector: greenhouse_job_board`, and `endpoint: jobs` contract.
 - `discovery.ts` — strict client for Dander's presentation-only `GET /v1/connectors` contract. It
   maps installed plugin endpoints to canonical source bindings and declared output fields.
+- `catalog.ts` / `catalog-store.ts` — strict client and separate external store for Dander's
+  curated `GET /v1/plugin-catalog` package metadata. A 404 remains an empty optional catalog.
+- `ConnectorCatalogDialog.tsx` — searches catalog metadata, shows compatibility/support/provider
+  validation, and copies exact setup steps without installing packages or writing the manifest.
 - `registry.ts` — `CONNECTOR_REGISTRY` plus `getConnector(id)` /
   `getConnectorForDanderNode(type, config)` / `listConnectors()`. Static and discovered entries
   share this one lookup surface.
@@ -52,5 +56,6 @@ and never receive a default value. No fixture, test, or committed descriptor car
 
 ## Out of scope
 
-Druff never calls Salesforce or Greenhouse. It authors the binding; Dander resolves the connector
-YAML and owns authentication, execution, state, and deployment.
+Druff never calls Salesforce, ServiceNow, or Greenhouse. It authors the binding; Dander resolves
+connector YAML and owns authentication, package activation, execution, state, and deployment.
+Catalog links and clipboard text are display-only operator aids.

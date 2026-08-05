@@ -7,6 +7,7 @@ import {
   isPipelineNodeKind,
 } from "@/features/pipeline-canvas/nodes/nodeKinds";
 import { getConnectorSnapshot, subscribeConnectors } from "@/features/connector-library/registry";
+import { ConnectorCatalogDialog } from "@/features/connector-library/ConnectorCatalogDialog";
 import { cn } from "@/lib/utils";
 import type { PipelineNodeKind } from "@/lib/pipeline-graph";
 
@@ -95,6 +96,7 @@ export function NodePalette() {
       <h2 className="px-1 pt-2 text-xs font-semibold text-muted-foreground uppercase">
         Connectors
       </h2>
+      <ConnectorCatalogDialog />
       <ul className="flex flex-col gap-2">
         {connectors.map((connector) => {
           const { icon: KindIcon, accent } = NODE_KINDS[connector.kind];

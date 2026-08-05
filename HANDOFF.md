@@ -2,11 +2,11 @@
 
 ## Finished
 
-- Added strict dynamic connector discovery from Dander's `GET /v1/connectors` endpoint.
-- Added Salesforce to the palette without hardcoding Salesforce runtime behavior in Druff.
-- Seeded canonical connector/endpoint bindings and declared output fields on dropped plugin nodes.
-- Preserved static Greenhouse for offline use and lossless generic-node behavior when discovery fails.
-- Proved dynamic Salesforce drag, inspect, and conditional save through Playwright.
+- Added strict optional discovery from Dander's `GET /v1/plugin-catalog` endpoint.
+- Loaded curated package metadata alongside runtime connector discovery without blocking graphs.
+- Added a searchable catalog dialog with compatibility, support, validation, links, and install state.
+- Added copy-only exact manifest/package setup steps; Druff does not install or persist anything.
+- Preserved the existing palette and canonical graph round trip.
 
 ## Try It
 
@@ -15,29 +15,29 @@ dander graph serve --file /path/to/graph.yaml --config /path/to/dander.yaml
 pnpm dev
 ```
 
-Choose **Open from Dander**; installed plugin connectors appear in the palette.
+Choose **Open from Dander**, then **Browse catalog**.
 
 ## Checks
 
 - ESLint, TypeScript, and Prettier checks passed.
-- Full Vitest suite passed with two workers: 50 files and 563 tests.
-- All 8 Playwright workflows passed in Chromium, including dynamic Salesforce.
-- The production Next.js build passed.
-- Protected GitHub CI repeated the complete frontend suite and secret scan on Linux successfully.
+- Full Vitest suite: 53 files and 572 tests passed.
+- All 9 Playwright workflows passed in Chromium, including catalog copy and filtering.
+- Production Next.js build passed.
 
 ## Decisions
 
-- Dander remains authoritative for installed plugins, graph validation, authentication, and runtime.
-- Druff consumes only presentation-safe descriptors and keeps one canonical PipelineGraph schema.
-- Discovery failures degrade to generic lossless source nodes instead of blocking graph access.
+- Keep catalog state separate from active connector descriptors.
+- Treat a missing/failed catalog as optional so canonical graph access remains available.
+- Keep installation, manifest editing, activation, runtime, and deployment in Dander/operator control.
 
 ## Remaining
 
-- Publish Dander `0.4.0rc2` and the plugin candidate only after explicit approval.
-- Run isolated GCP acceptance only after the separate reviewed-apply approval.
+- Merge Dander through protected CI before opening the dependent Druff PR.
+- Merge Druff through protected CI after the Dander API contract reaches `main`.
+- Provision Dander and Druff together only in the later reviewed GCP slice.
 
 ## Review First
 
-- `src/features/connector-library/discovery.ts`
-- `src/features/connector-library/registry.ts`
-- `e2e/dynamic-salesforce-connector.spec.ts`
+- `src/features/connector-library/catalog.ts`
+- `src/features/connector-library/ConnectorCatalogDialog.tsx`
+- `src/features/graph-io/useGraphPersistence.ts`

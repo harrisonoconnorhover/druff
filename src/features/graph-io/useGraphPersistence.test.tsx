@@ -2,6 +2,14 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useGraphPersistence } from "@/features/graph-io/useGraphPersistence";
 import type { ConnectorDiscovery } from "@/features/connector-library/discovery";
+import type {
+  PluginCatalogConnector,
+  PluginCatalogDiscovery,
+} from "@/features/connector-library/catalog";
+import {
+  clearPluginCatalog,
+  getPluginCatalogSnapshot,
+} from "@/features/connector-library/catalog-store";
 import { clearDiscoveredConnectors, getConnector } from "@/features/connector-library/registry";
 import { SEED_GRAPH, useGraphStore } from "@/lib/graph-store";
 import { PipelineGraphSchema, graphToCanvas } from "@/lib/pipeline-graph";
@@ -22,6 +30,7 @@ const GRAPH = PipelineGraphSchema.parse({
 
 beforeEach(() => {
   clearDiscoveredConnectors();
+  clearPluginCatalog();
   useGraphStore.getState().setGraph(SEED_GRAPH.nodes, SEED_GRAPH.edges, SEED_GRAPH.name);
 });
 
@@ -64,6 +73,40 @@ describe("useGraphPersistence", () => {
     expect(useGraphStore.getState().nodes[0].data.connectorId).toBe("salesforce");
   });
 
+  it("loads the curated package catalog alongside connector discovery", async () => {
+    const persistence: GraphPersistence = {
+      load: vi.fn(async () => ({ graph: GRAPH, revision: '"revision-1"' })),
+      save: vi.fn(async (graph) => ({ graph, revision: '"revision-2"' })),
+    };
+    const catalogEntry: PluginCatalogConnector = {
+      id: "salesforce",
+      display_name: "Salesforce",
+      description: "Bulk API Accounts ingestion.",
+      distribution: "dander-connector-salesforce",
+      version: "0.1.1",
+      dander_specifier: ">=0.4.0,<0.6",
+      compatible: true,
+      support_status: "first-party-alpha",
+      validation_status: "provider-validated",
+      documentation_url: "https://example.test/docs/salesforce",
+      pypi_url: "https://example.test/pypi/salesforce",
+      repository_url: "https://example.test/repository/salesforce",
+      installed: true,
+      installed_version: "0.1.1",
+    };
+    const pluginCatalogDiscovery: PluginCatalogDiscovery = {
+      load: vi.fn(async () => [catalogEntry]),
+    };
+    const { result } = renderHook(() =>
+      useGraphPersistence({ persistence, pluginCatalogDiscovery }),
+    );
+
+    await act(async () => result.current.open());
+
+    expect(getPluginCatalogSnapshot()).toEqual([catalogEntry]);
+    expect(result.current.status).toBe("clean");
+  });
+
   it("opens canonically when connector discovery is unavailable", async () => {
     const persistence: GraphPersistence = {
       load: vi.fn(async () => ({ graph: GRAPH, revision: '"revision-1"' })),
@@ -74,12 +117,20 @@ describe("useGraphPersistence", () => {
         throw new Error("catalog unavailable");
       }),
     };
-    const { result } = renderHook(() => useGraphPersistence({ persistence, connectorDiscovery }));
+    const pluginCatalogDiscovery: PluginCatalogDiscovery = {
+      load: vi.fn(async () => {
+        throw new Error("catalog unavailable");
+      }),
+    };
+    const { result } = renderHook(() =>
+      useGraphPersistence({ persistence, connectorDiscovery, pluginCatalogDiscovery }),
+    );
 
     await act(async () => result.current.open());
 
     expect(result.current.status).toBe("clean");
     expect(getConnector("greenhouse")).toBeDefined();
+    expect(getPluginCatalogSnapshot()).toEqual([]);
   });
 
   it("opens explicitly, marks edits dirty, and conditionally saves the current graph", async () => {

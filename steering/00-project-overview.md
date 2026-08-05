@@ -76,6 +76,10 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-05 — **Curated connector discovery remains display-only** — Druff strictly consumes
+  Dander's package catalog, searches it, and copies exact manifest/install steps. Dander and PyPI
+  remain authoritative; Druff does not install packages, write manifests, or activate plugins.
+
 - 2026-08-04 — **Candidate planning is explicit, full-manifest, and non-applyable** — Save remains
   file-only. Dander snapshots the saved revision, pushes a source-free candidate, and renders a
   temporary human Terraform plan from operator-bound inputs. Druff displays all shared-image jobs
