@@ -6,6 +6,7 @@
 - Run the final image as non-root on port 8080 with repository source excluded.
 - Added CI startup, source-boundary, vulnerability, and existing secret checks.
 - Documented hosted Druff as a public UI over Dander's local control plane.
+- Annotated every loopback request for Chrome's Local Network Access permission flow.
 
 ## Try It
 
@@ -29,12 +30,12 @@ docker run --rm -p 3000:8080 druff:local
 
 ## Remaining
 
-- Pass protected CI; final adversarial review is already clean.
-- Deploy the immutable image through Dander's reviewed Terraform plan in the disposable project.
-- Verify the hosted interface can open and save through an exact-origin local Dander service.
+- Pass protected CI for the Local Network Access correction.
+- Push the corrected immutable image and update only the disposable Druff service.
+- Verify hosted open/save through exact-origin Dander and finish with a no-drift plan.
 
 ## Review First
 
-- `Dockerfile`
-- `.github/workflows/ci.yml`
-- `README.md`
+- `src/lib/local-network-request.ts`
+- `src/lib/persistence/graph-persistence.ts`
+- `src/lib/dander-operations/graph-operations.ts`

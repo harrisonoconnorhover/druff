@@ -56,6 +56,7 @@ describe("DanderApiGraphOperations", () => {
     expect(fetchOperations).toHaveBeenCalledWith("http://127.0.0.1:8765/v1/graph/status", {
       method: "GET",
       headers: { Accept: "application/json" },
+      targetAddressSpace: "local",
     });
   });
 
@@ -92,10 +93,12 @@ describe("DanderApiGraphOperations", () => {
     expect(fetchOperations).toHaveBeenNthCalledWith(1, "http://127.0.0.1:8765/v1/graph/validate", {
       method: "POST",
       headers: { Accept: "application/json", "If-Match": '"revision-1"' },
+      targetAddressSpace: "local",
     });
     expect(fetchOperations).toHaveBeenNthCalledWith(2, "http://127.0.0.1:8765/v1/graph/run", {
       method: "POST",
       headers: { Accept: "application/json", "If-Match": '"revision-1"' },
+      targetAddressSpace: "local",
     });
     expect(fetchOperations).toHaveBeenNthCalledWith(
       3,
@@ -103,6 +106,7 @@ describe("DanderApiGraphOperations", () => {
       {
         method: "POST",
         headers: { Accept: "application/json", "If-Match": '"revision-1"' },
+        targetAddressSpace: "local",
       },
     );
   });
