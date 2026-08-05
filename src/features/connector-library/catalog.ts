@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { localNetworkRequest } from "@/lib/local-network-request";
 
 export const PluginCatalogConnectorSchema = z
   .object({
@@ -65,10 +66,13 @@ export class DanderApiPluginCatalogDiscovery implements PluginCatalogDiscovery {
   }
 
   async load(): Promise<PluginCatalogConnector[]> {
-    const response = await this.fetchCatalog(this.endpoint, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
+    const response = await this.fetchCatalog(
+      this.endpoint,
+      localNetworkRequest({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
     if (response.status === 404) return [];
     if (!response.ok) {
       throw new PluginCatalogDiscoveryError(

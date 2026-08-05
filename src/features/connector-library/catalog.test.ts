@@ -41,6 +41,7 @@ describe("DanderApiPluginCatalogDiscovery", () => {
     expect(fetchCatalog).toHaveBeenCalledWith("http://127.0.0.1:8765/v1/plugin-catalog", {
       method: "GET",
       headers: { Accept: "application/json" },
+      targetAddressSpace: "local",
     });
   });
 

@@ -1,4 +1,5 @@
 import { PipelineGraphSchema, type GraphLayout, type PipelineGraph } from "@/lib/pipeline-graph";
+import { localNetworkRequest } from "@/lib/local-network-request";
 
 /** On-disk envelope version. Bump when the stored shape changes incompatibly; `load()` treats any
  * other version as absent rather than attempting a migration (none is needed yet). */
@@ -61,23 +62,29 @@ export class DanderApiGraphPersistence implements GraphPersistence {
   }
 
   async load(): Promise<GraphDocument> {
-    const response = await this.fetchGraph(this.endpoint, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
+    const response = await this.fetchGraph(
+      this.endpoint,
+      localNetworkRequest({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
     return this.readDocument(response);
   }
 
   async save(graph: PipelineGraph, revision: string): Promise<GraphDocument> {
-    const response = await this.fetchGraph(this.endpoint, {
-      method: "PUT",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "If-Match": revision,
-      },
-      body: JSON.stringify(graph),
-    });
+    const response = await this.fetchGraph(
+      this.endpoint,
+      localNetworkRequest({
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "If-Match": revision,
+        },
+        body: JSON.stringify(graph),
+      }),
+    );
     return this.readDocument(response);
   }
 

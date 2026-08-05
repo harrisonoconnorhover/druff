@@ -3,6 +3,7 @@ import {
   ConnectorDescriptorSchema,
   type ConnectorDescriptor,
 } from "@/features/connector-library/descriptors/types";
+import { localNetworkRequest } from "@/lib/local-network-request";
 
 const DanderConnectorFieldSchema = z
   .object({
@@ -70,10 +71,13 @@ export class DanderApiConnectorDiscovery implements ConnectorDiscovery {
   }
 
   async load(): Promise<ConnectorDescriptor[]> {
-    const response = await this.fetchConnectors(this.endpoint, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
+    const response = await this.fetchConnectors(
+      this.endpoint,
+      localNetworkRequest({
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }),
+    );
     // Dander versions before connector discovery remain usable with Druff's static Greenhouse
     // fallback. Other errors are real service failures and are surfaced to the caller.
     if (response.status === 404) return [];

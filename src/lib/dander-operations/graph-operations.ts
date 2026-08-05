@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { localNetworkRequest } from "@/lib/local-network-request";
 
 const GraphOperationBindingSchema = z.object({
   project: z.string().min(1),
@@ -154,7 +155,7 @@ export class DanderApiGraphOperations implements GraphOperationsClient {
   private async request<T>(path: string, init: RequestInit, schema: z.ZodType<T>): Promise<T> {
     let response: Response;
     try {
-      response = await this.fetchOperations(`${this.baseUrl}${path}`, init);
+      response = await this.fetchOperations(`${this.baseUrl}${path}`, localNetworkRequest(init));
     } catch (cause) {
       throw new GraphOperationsError(
         cause instanceof TypeError
