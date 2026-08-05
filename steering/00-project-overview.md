@@ -4,8 +4,10 @@
 > When a product decision is made, append it to the Decision Log at the bottom — this file is
 > the single source of truth for "why is it this way."
 >
-> **Status:** stack decided, product scoping in progress. Modules/non-goals below reflect the
-> first working description of the product (2026-07-22) — refine as it's built out.
+> **Status:** working alpha. The canonical graph editor, Dander-backed persistence, dynamic
+> discovery, manual execution/status, safe transform operations, deployment preview, and static
+> Cloud Run interface are implemented. The boundaries below distinguish that slice from future
+> product work.
 
 ## One-liner
 
@@ -29,7 +31,9 @@ below.
 - `PipelineGraph` is the canonical document Druff edits. Dander's localhost single-file service
   owns validation, optimistic concurrency, canonical serialization, and atomic file replacement.
 - The deployed version-1 `dander.yaml` manifest remains a separate contract. Druff may import it
-  into a detached one-way projection, but does not write it back or deploy it.
+  into a detached one-way projection, but does not write it back or apply Terraform. When Dander
+  starts with one fixed pipeline binding, Druff may validate and execute that already-deployed job,
+  read compact status, and request a source-free candidate plus non-applyable full-manifest plan.
 - Druff preserves every field in Dander's current graph model, patches only editor-owned fields,
   and fails loud on unknown fields. Model equivalence is guaranteed; YAML formatting/comments are
   not preserved.

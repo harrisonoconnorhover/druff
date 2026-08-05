@@ -2,49 +2,53 @@
 
 > Every agent MUST read and obey this before writing code. Violations are automatic PR-review
 > failures.
->
-> **Status: draft, ported from Dander's `steering/01-security.md`.** Rules 1, 3, and 4 below are
-> universal defaults safe to keep as-is. Rule 2 is a placeholder — it depends on how Druff talks
-> to Dander (or any backend), which isn't decided yet.
 
 ## 1. Secrets: zero hardcoding, ever
 
 - **NEVER** write a secret, key, password, token, connection string, or credential literal into
-  source, config, tests, fixtures, comments, or commit messages. Not even a placeholder that
-  looks real. Not even "temporarily."
-- **Frontend-specific:** anything that ships in a client-side bundle is public, full stop —
-  never put a real secret, API key, or credential in code that gets built and shipped to the
-  browser. If a call needs a secret, it goes through a backend (Dander or a backend-for-frontend),
-  never directly from client code.
-- `.env` is git-ignored. `.env.example` (keys only, empty values) IS committed and kept in sync.
-- If you need a new secret/config value, add its **key** to `.env.example` and reference it in
-  `steering`/docs — never its value.
+  source, config, tests, fixtures, comments, or commit messages. Not even temporarily.
+- Anything shipped in Druff's client bundle is public. Connector forms may store references that
+  Dander resolves later, but must never receive or resolve the underlying credential.
+- Druff does not use environment-held credentials today. If a future server component needs one,
+  document the new boundary before implementation and commit names/placeholders only, never values.
 
-## 2. Auth / backend integration — TBD
+## 2. Current Dander boundary
 
-Placeholder pending a decision: how does Druff authenticate to Dander (or whatever it talks to)?
-Once decided, replace this section with the concrete strategy (e.g. short-lived tokens from a
-backend-for-frontend, OAuth2 PKCE for a browser SPA, session cookies). Whatever it is:
-- No long-lived credential ever lives in browser storage (`localStorage`/`sessionStorage`) —
-  prefer short-lived tokens and httpOnly cookies.
-- Never roll a custom crypto/token scheme — use a maintained library.
+- The hosted Druff service is a public static browser shell. It has no project IAM roles, graph
+  storage, provider credentials, Dander API, or server-side session.
+- Privileged operations go only to Dander's operator-started service at `127.0.0.1:8765`. Dander
+  binds one graph, manifest pipeline, and GCP project at startup; Druff cannot choose arbitrary
+  filesystem or cloud targets.
+- Dander permits only the operator-supplied exact Druff origin. Do not widen CORS to `*`, accept an
+  origin from browser input, bind the control service to a non-loopback interface, or add a public
+  proxy to it.
+- The browser may require explicit local-network permission before a hosted page can contact the
+  loopback service. The operator's local process and `gcloud` identity remain the authority; no
+  long-lived browser credential or custom token scheme is used.
+- The Dander responses consumed by Druff contain graph/configuration data and presentation-safe
+  connector, operation, execution, and plan metadata. They must not contain secret values, raw
+  provider rows, Terraform state, or unrestricted logs.
 
 ## 3. Data sensitivity
 
-- Treat any Dander-sourced data (HR/comp/customer/PII per Dander's `steering/01-security.md`) as
-  sensitive by default in the UI too: no sensitive data in client-side logs, error messages,
-  analytics/telemetry events, or committed fixtures/screenshots.
-- When mocking API responses for tests/fixtures, scrub values before committing them to the repo.
+- Treat Dander-sourced HR, compensation, customer, and other business data as sensitive by default:
+  do not place it in client logs, errors, analytics, committed fixtures, or screenshots.
+- Use invented values in tests. Secret-reference syntax is allowed only when it is visibly a
+  handle, such as `secret:demo_key`, and never resembles a usable credential.
+- Preserve the existing fail-closed handling for unknown connector/operation fields and unsafe
+  credential-shaped request literals. Dander remains the authoritative validator.
 
-## 4. Dependencies
+## 4. Dependencies and artifacts
 
-- Pin dependencies (commit the lockfile). Review new frontend deps for what they run at
-  install/build time (postinstall scripts are a common supply-chain vector) and what they phone
-  home to at runtime.
+- Pin dependencies in `pnpm-lock.yaml`. Review new packages for install/build scripts and runtime
+  network behavior.
+- The production image contains only compiled static assets and its non-root web server. Do not
+  copy the source tree, package manager, development dependencies, local graphs, or environment
+  files into the runtime image.
 
 ## Quick self-check before any commit
 
-- [ ] No literal secret anywhere in the diff (grep the diff for keys/tokens/passwords).
-- [ ] Nothing sensitive ends up in a client-visible bundle, log, fixture, or screenshot.
-- [ ] New secret/config keys added to `.env.example` (names only).
-- [ ] Lockfile updated alongside any dependency change.
+- [ ] No literal secret or sensitive data appears in the diff or built browser assets.
+- [ ] Browser-visible APIs return only the minimum presentation/operation metadata required.
+- [ ] The Dander control service remains loopback-only and exact-origin scoped.
+- [ ] New dependencies are justified and the lockfile changes with them.
