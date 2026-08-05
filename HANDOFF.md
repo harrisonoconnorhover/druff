@@ -6,7 +6,7 @@
 - Run the final image as non-root on port 8080 with repository source excluded.
 - Added CI startup, source-boundary, vulnerability, and existing secret checks.
 - Documented hosted Druff as a public UI over Dander's local control plane.
-- Annotated every loopback request for Chrome's Local Network Access permission flow.
+- Annotated every `127.0.0.1` request as `loopback` for Chrome's Local Network Access flow.
 
 ## Try It
 
@@ -27,10 +27,11 @@ docker run --rm -p 3000:8080 druff:local
 
 - Host only the compiled interface; Dander remains the loopback persistence/execution authority.
 - Use a minimal static server and a final image containing no Node/package tree or repository source.
+- Match Chrome's distinct `loopback` address space instead of the broader `local` network class.
 
 ## Remaining
 
-- Pass protected CI for the Local Network Access correction.
+- Pass protected CI for the loopback-address correction.
 - Push the corrected immutable image and update only the disposable Druff service.
 - Verify hosted open/save through exact-origin Dander and finish with a no-drift plan.
 
