@@ -6,6 +6,11 @@ import {
   type ConnectorDiscovery,
 } from "@/features/connector-library/discovery";
 import {
+  DanderApiPluginCatalogDiscovery,
+  type PluginCatalogDiscovery,
+} from "@/features/connector-library/catalog";
+import { clearPluginCatalog, setPluginCatalog } from "@/features/connector-library/catalog-store";
+import {
   clearDiscoveredConnectors,
   setDiscoveredConnectors,
 } from "@/features/connector-library/registry";
@@ -35,6 +40,8 @@ export type UseGraphPersistenceOptions = {
   persistence?: GraphPersistence;
   /** Optional connector-catalog seam. Injected graph-only tests omit discovery entirely. */
   connectorDiscovery?: ConnectorDiscovery;
+  /** Optional curated-package catalog seam; it never installs packages or writes the manifest. */
+  pluginCatalogDiscovery?: PluginCatalogDiscovery;
 };
 
 /**
@@ -54,6 +61,12 @@ export function useGraphPersistence(
     connectorDiscoveryRef.current =
       options.connectorDiscovery ??
       (options.persistence === undefined ? new DanderApiConnectorDiscovery() : null);
+  }
+  const pluginCatalogDiscoveryRef = useRef<PluginCatalogDiscovery | null | undefined>(undefined);
+  if (pluginCatalogDiscoveryRef.current === undefined) {
+    pluginCatalogDiscoveryRef.current =
+      options.pluginCatalogDiscovery ??
+      (options.persistence === undefined ? new DanderApiPluginCatalogDiscovery() : null);
   }
 
   const revisionRef = useRef<string | null>(null);
@@ -85,15 +98,28 @@ export function useGraphPersistence(
     setError(null);
     try {
       const connectorDiscovery = connectorDiscoveryRef.current;
-      if (connectorDiscovery != null) {
-        try {
-          setDiscoveredConnectors(await connectorDiscovery.load());
-        } catch {
-          // A plugin catalog must never prevent canonical graph access. Unknown connectors load as
-          // ordinary source nodes and retain their complete config/fields on the next save.
-          clearDiscoveredConnectors();
-        }
-      }
+      const pluginCatalogDiscovery = pluginCatalogDiscoveryRef.current;
+      await Promise.all([
+        (async () => {
+          if (connectorDiscovery == null) return;
+          try {
+            setDiscoveredConnectors(await connectorDiscovery.load());
+          } catch {
+            // Connector discovery must never prevent canonical graph access. Unknown connectors
+            // load as ordinary source nodes and retain their complete config on the next save.
+            clearDiscoveredConnectors();
+          }
+        })(),
+        (async () => {
+          if (pluginCatalogDiscovery == null) return;
+          try {
+            setPluginCatalog(await pluginCatalogDiscovery.load());
+          } catch {
+            // Catalog browsing is optional and cannot become a graph open/save dependency.
+            clearPluginCatalog();
+          }
+        })(),
+      ]);
       const document = await persistenceRef.current!.load();
       const restored = graphToCanvas(document.graph);
       applyingRemoteRef.current = true;

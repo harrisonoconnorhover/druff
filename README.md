@@ -16,6 +16,11 @@ descriptors from Dander and adds them to the palette dynamically. The first dyna
 Salesforce Accounts. Greenhouse remains a static fallback for offline/document-only authoring;
 Druff never receives API URLs, authentication settings, secret references, or credentials.
 
+After **Open from Dander**, **Browse catalog** shows Dander's curated connector packages with exact
+pins, compatible Dander versions, support and provider-validation status, public links, and whether
+the current manifest activated them. Druff only copies setup instructions; it does not run a
+package installer or edit `dander.yaml`.
+
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
 
