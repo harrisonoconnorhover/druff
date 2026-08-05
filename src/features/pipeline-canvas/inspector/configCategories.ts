@@ -7,6 +7,7 @@ import { HTTP_REQUEST_CONFIG_CATEGORY } from "@/features/pipeline-canvas/inspect
 import { TRIGGER_CONFIG_CATEGORY } from "@/features/pipeline-canvas/inspector/categories/TriggerConfigCategory";
 import { CUSTOM_CODE_CONFIG_CATEGORY } from "@/features/pipeline-canvas/inspector/categories/CustomCodeConfigCategory";
 import { WRITER_CONFIG_CATEGORY } from "@/features/pipeline-canvas/inspector/categories/writer/category";
+import { PIPELINE_OPERATION_CONFIG_CATEGORY } from "@/features/pipeline-operations/PipelineOperationConfigCategory";
 
 /**
  * Uniform seam every config category editor is bound to (DRUFF-11): full node in, full config out.
@@ -82,6 +83,7 @@ export const CONFIG_CATEGORIES: ConfigCategory[] = [
   HTTP_REQUEST_CONFIG_CATEGORY,
   TRIGGER_CONFIG_CATEGORY,
   CUSTOM_CODE_CONFIG_CATEGORY,
+  PIPELINE_OPERATION_CONFIG_CATEGORY,
   WRITER_CONFIG_CATEGORY,
 ];
 

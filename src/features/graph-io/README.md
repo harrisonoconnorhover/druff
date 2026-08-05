@@ -18,6 +18,11 @@ store, the pure pipeline-graph model/converters, and three browser affordances:
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
 - `useGraphPersistence.ts` — explicit async Open/Save controller with dirty/conflict state.
 
+On Open, the controller also discovers the connected runtime's presentation-only connector,
+package, and transform-operation catalogs. Catalog failure never blocks graph access. The operation
+editor writes the advertised safe subset to canonical transform `config.operations`; it does not
+create a Druff-only graph schema or execute transformations in the browser.
+
 ## Single serialization path
 
 Every conversion from the canvas to text goes through DRUFF-4's
@@ -36,3 +41,5 @@ never re-encoded as or written back to `dander.yaml`.
 - Saving normalizes YAML formatting/comments. Model fields are preserved; byte formatting is not.
 - Execution controls live in `src/features/graph-operations` and can only start an already-deployed,
   operator-bound job. Terraform deployment remains out of scope.
+- Provider create/update/delete, deleted-record feeds, arbitrary SQL hooks, and browser-side
+  operation execution are out of scope.

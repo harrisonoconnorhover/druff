@@ -11,6 +11,14 @@ import {
   getPluginCatalogSnapshot,
 } from "@/features/connector-library/catalog-store";
 import { clearDiscoveredConnectors, getConnector } from "@/features/connector-library/registry";
+import type {
+  OperationCatalogDiscovery,
+  OperationDescriptor,
+} from "@/features/pipeline-operations/catalog";
+import {
+  clearOperationCatalog,
+  getOperationCatalogSnapshot,
+} from "@/features/pipeline-operations/catalog-store";
 import { SEED_GRAPH, useGraphStore } from "@/lib/graph-store";
 import { PipelineGraphSchema, graphToCanvas } from "@/lib/pipeline-graph";
 import { GraphPersistenceError, type GraphPersistence } from "@/lib/persistence/graph-persistence";
@@ -31,6 +39,7 @@ const GRAPH = PipelineGraphSchema.parse({
 beforeEach(() => {
   clearDiscoveredConnectors();
   clearPluginCatalog();
+  clearOperationCatalog();
   useGraphStore.getState().setGraph(SEED_GRAPH.nodes, SEED_GRAPH.edges, SEED_GRAPH.name);
 });
 
@@ -107,6 +116,33 @@ describe("useGraphPersistence", () => {
     expect(result.current.status).toBe("clean");
   });
 
+  it("loads runtime-supported operations without changing the graph schema", async () => {
+    const persistence: GraphPersistence = {
+      load: vi.fn(async () => ({ graph: GRAPH, revision: '"revision-1"' })),
+      save: vi.fn(async (graph) => ({ graph, revision: '"revision-2"' })),
+    };
+    const operationCatalogDiscovery: OperationCatalogDiscovery = {
+      load: vi.fn(async (): Promise<OperationDescriptor[]> => [
+        {
+          kind: "trim_whitespace",
+          display_name: "Trim whitespace",
+          description: "Remove surrounding whitespace.",
+          parameters: [{ name: "field", display_name: "Field", control: "field", required: true }],
+        },
+      ]),
+    };
+    const { result } = renderHook(() =>
+      useGraphPersistence({ persistence, operationCatalogDiscovery }),
+    );
+
+    await act(async () => result.current.open());
+
+    expect(getOperationCatalogSnapshot().map((operation) => operation.kind)).toEqual([
+      "trim_whitespace",
+    ]);
+    expect(result.current.status).toBe("clean");
+  });
+
   it("opens canonically when connector discovery is unavailable", async () => {
     const persistence: GraphPersistence = {
       load: vi.fn(async () => ({ graph: GRAPH, revision: '"revision-1"' })),
@@ -122,8 +158,18 @@ describe("useGraphPersistence", () => {
         throw new Error("catalog unavailable");
       }),
     };
+    const operationCatalogDiscovery: OperationCatalogDiscovery = {
+      load: vi.fn(async () => {
+        throw new Error("catalog unavailable");
+      }),
+    };
     const { result } = renderHook(() =>
-      useGraphPersistence({ persistence, connectorDiscovery, pluginCatalogDiscovery }),
+      useGraphPersistence({
+        persistence,
+        connectorDiscovery,
+        pluginCatalogDiscovery,
+        operationCatalogDiscovery,
+      }),
     );
 
     await act(async () => result.current.open());
@@ -131,6 +177,7 @@ describe("useGraphPersistence", () => {
     expect(result.current.status).toBe("clean");
     expect(getConnector("greenhouse")).toBeDefined();
     expect(getPluginCatalogSnapshot()).toEqual([]);
+    expect(getOperationCatalogSnapshot()).toEqual([]);
   });
 
   it("opens explicitly, marks edits dirty, and conditionally saves the current graph", async () => {

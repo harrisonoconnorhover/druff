@@ -14,6 +14,14 @@ import {
   clearDiscoveredConnectors,
   setDiscoveredConnectors,
 } from "@/features/connector-library/registry";
+import {
+  DanderApiOperationCatalogDiscovery,
+  type OperationCatalogDiscovery,
+} from "@/features/pipeline-operations/catalog";
+import {
+  clearOperationCatalog,
+  setOperationCatalog,
+} from "@/features/pipeline-operations/catalog-store";
 import { useGraphStore, type GraphState } from "@/lib/graph-store";
 import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph";
 import {
@@ -42,6 +50,8 @@ export type UseGraphPersistenceOptions = {
   connectorDiscovery?: ConnectorDiscovery;
   /** Optional curated-package catalog seam; it never installs packages or writes the manifest. */
   pluginCatalogDiscovery?: PluginCatalogDiscovery;
+  /** Optional runtime-owned catalog of safe operations the connected Dander can execute. */
+  operationCatalogDiscovery?: OperationCatalogDiscovery;
 };
 
 /**
@@ -67,6 +77,14 @@ export function useGraphPersistence(
     pluginCatalogDiscoveryRef.current =
       options.pluginCatalogDiscovery ??
       (options.persistence === undefined ? new DanderApiPluginCatalogDiscovery() : null);
+  }
+  const operationCatalogDiscoveryRef = useRef<OperationCatalogDiscovery | null | undefined>(
+    undefined,
+  );
+  if (operationCatalogDiscoveryRef.current === undefined) {
+    operationCatalogDiscoveryRef.current =
+      options.operationCatalogDiscovery ??
+      (options.persistence === undefined ? new DanderApiOperationCatalogDiscovery() : null);
   }
 
   const revisionRef = useRef<string | null>(null);
@@ -99,6 +117,7 @@ export function useGraphPersistence(
     try {
       const connectorDiscovery = connectorDiscoveryRef.current;
       const pluginCatalogDiscovery = pluginCatalogDiscoveryRef.current;
+      const operationCatalogDiscovery = operationCatalogDiscoveryRef.current;
       await Promise.all([
         (async () => {
           if (connectorDiscovery == null) return;
@@ -117,6 +136,16 @@ export function useGraphPersistence(
           } catch {
             // Catalog browsing is optional and cannot become a graph open/save dependency.
             clearPluginCatalog();
+          }
+        })(),
+        (async () => {
+          if (operationCatalogDiscovery == null) return;
+          try {
+            setOperationCatalog(await operationCatalogDiscovery.load());
+          } catch {
+            // Older runtimes and failed discovery do not block canonical graph access. Existing
+            // operation config remains preserved, but the editor offers no unsupported additions.
+            clearOperationCatalog();
           }
         })(),
       ]);

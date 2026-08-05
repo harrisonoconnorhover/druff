@@ -21,6 +21,12 @@ pins, compatible Dander versions, support and provider-validation status, public
 the current manifest activated them. Druff only copies setup instructions; it does not run a
 package installer or edit `dander.yaml`.
 
+Transform nodes can also author Dander's advertised, ordered, schema-preserving operations:
+whitespace trimming, string truncation, null defaults, and bounded row filters. Druff stores these
+directly as canonical `config.operations`; Dander remains the only execution engine. An older
+runtime simply exposes no operation palette, and an unknown/newer operation stays preserved and
+read-only instead of being rewritten.
+
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log).
 
@@ -175,6 +181,7 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
 validation, source view, static Greenhouse plus dynamically discovered connector configuration,
 one-way hosted-manifest preview, manual execution/status, and an explicit source-free
-candidate/full-manifest plan for one operator-bound graph. Its compiled interface can be hosted on
-Cloud Run while the Dander control plane remains local. Manifest write-back and Terraform apply are
-not implemented.
+candidate/full-manifest plan for one operator-bound graph. Transform nodes can visually author the
+safe operation subset advertised by the connected Dander runtime. Its compiled interface can be
+hosted on Cloud Run while the Dander control plane remains local. Manifest write-back, provider
+write-back, and Terraform apply are not implemented.
