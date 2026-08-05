@@ -57,6 +57,31 @@ Then choose **Open from Dander**. Druff uses explicit Save, shows unsaved/confli
 not overwrite a file that changed after it was opened. Graph YAML formatting and comments may be
 normalized because Dander writes its canonical model.
 
+### Hosted interface
+
+The production Dockerfile exports the compiled static interface into a non-root, source-free image
+for Cloud Run. Node and the package tree remain only in the discarded build stage:
+
+```bash
+docker build --platform linux/amd64 --tag REGION-docker.pkg.dev/PROJECT/dander/druff:VERSION .
+docker push REGION-docker.pkg.dev/PROJECT/dander/druff:VERSION
+```
+
+Resolve the pushed digest and pass the immutable `...@sha256:...` reference to Dander as
+`dander init --druff-container-image IMAGE`. Dander provisions the public interface as a
+scale-to-zero service with a dedicated identity that has no project roles.
+
+The hosted page is still only a browser shell: it stores no graphs or credentials and exposes no
+Dander API. Start the authority from the project checkout and allow only the exact hosted origin:
+
+```bash
+dander graph serve --file /absolute/path/to/graph.yaml --origin https://YOUR_DRUFF_URL
+```
+
+Your browser may ask permission for the hosted page to access services on your local machine. Only
+after approval can Druff contact Dander at `127.0.0.1:8765`. Saving, validation, execution, and
+deployment preview keep their existing Dander-owned boundaries.
+
 To enable the narrow operational controls for one graph that is already deployed, start Dander
 with its matching manifest pipeline and GCP project:
 
@@ -150,5 +175,6 @@ shows each run's agents with their role, ticket, and live PASS/FAIL verdicts:
 Working canonical graph editor with Dander-backed single-file Open/Save, canvas inspectors,
 validation, source view, static Greenhouse plus dynamically discovered connector configuration,
 one-way hosted-manifest preview, manual execution/status, and an explicit source-free
-candidate/full-manifest plan for one operator-bound graph. Manifest write-back and Terraform apply
-are not implemented.
+candidate/full-manifest plan for one operator-bound graph. Its compiled interface can be hosted on
+Cloud Run while the Dander control plane remains local. Manifest write-back and Terraform apply are
+not implemented.

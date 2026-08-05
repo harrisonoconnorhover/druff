@@ -76,6 +76,11 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-05 — **Cloud hosting serves only the compiled interface** — Druff's non-root,
+  source-free image may run publicly on scale-to-zero Cloud Run, but all graph persistence,
+  validation, execution, and planning still go to Dander's exact-origin loopback service. The
+  hosted service receives no project roles, secrets, graph storage, or Dander API.
+
 - 2026-08-05 — **Curated connector discovery remains display-only** — Druff strictly consumes
   Dander's package catalog, searches it, and copies exact manifest/install steps. Dander and PyPI
   remain authoritative; Druff does not install packages, write manifests, or activate plugins.
