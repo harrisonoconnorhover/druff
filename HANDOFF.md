@@ -22,6 +22,9 @@ docker run --rm -p 3000:8080 druff:local
 - All 9 Playwright workflows passed in Chromium.
 - Linux/amd64 image build, non-root/source-free checks, and HTTP startup smoke passed.
 - Docker Scout found zero fixed high/critical vulnerabilities in the 7.2 MB final image.
+- Protected CI passed and the merged image was deployed by immutable digest.
+- Hosted open, conditional save, status refresh, connector discovery, and validation passed against
+  Dander's exact-origin loopback service with no failed browser requests.
 
 ## Decisions
 
@@ -31,9 +34,9 @@ docker run --rm -p 3000:8080 druff:local
 
 ## Remaining
 
-- Pass protected CI for the loopback-address correction.
-- Push the corrected immutable image and update only the disposable Druff service.
-- Verify hosted open/save through exact-origin Dander and finish with a no-drift plan.
+- Keep Chrome Local Network Access enabled for the hosted Druff origin.
+- Start Dander's local graph service before using persistence or execution controls.
+- The disposable Salesforce and ServiceNow schedules remain paused.
 
 ## Review First
 
