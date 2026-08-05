@@ -3,9 +3,9 @@
  * The field is shipping in browsers before TypeScript's DOM declarations expose it.
  */
 export type LocalNetworkRequestInit = RequestInit & {
-  targetAddressSpace: "local";
+  targetAddressSpace: "loopback";
 };
 
 export function localNetworkRequest(init: RequestInit): LocalNetworkRequestInit {
-  return { ...init, targetAddressSpace: "local" };
+  return { ...init, targetAddressSpace: "loopback" };
 }

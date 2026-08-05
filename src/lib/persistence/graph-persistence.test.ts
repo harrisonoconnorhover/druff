@@ -155,7 +155,7 @@ describe("DanderApiGraphPersistence", () => {
     expect(fetchGraph).toHaveBeenCalledWith("http://127.0.0.1:8765/v1/graph", {
       method: "GET",
       headers: { Accept: "application/json" },
-      targetAddressSpace: "local",
+      targetAddressSpace: "loopback",
     });
   });
 
@@ -178,7 +178,7 @@ describe("DanderApiGraphPersistence", () => {
         method: "PUT",
         headers: expect.objectContaining({ "If-Match": '"revision-1"' }),
         body: JSON.stringify(EXAMPLE_GRAPH),
-        targetAddressSpace: "local",
+        targetAddressSpace: "loopback",
       }),
     );
   });
