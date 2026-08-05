@@ -76,6 +76,12 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-05 — **Josh's graph-client branch is reconciled into the unified persistence path** —
+  upstream commit `a1c526b` established explicit Dander graph open/save and schema-alignment work.
+  The fork's later `GraphPersistence` controller already provides that contract plus conflict
+  state, dynamic catalogs, operations, execution, and deployment preview, so the upstream ancestry
+  is preserved without adding a second HTTP client or duplicate toolbar controls.
+
 - 2026-08-05 — **Dander owns executable graph operations** — Druff discovers a presentation-only
   operation catalog and edits the same ordered `config.operations` stored in `PipelineGraph`.
   Dander alone validates and executes the closed schema-preserving subset after ingestion;
