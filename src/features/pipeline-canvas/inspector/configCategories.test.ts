@@ -129,10 +129,13 @@ describe("resolveConfigCategories (real registry)", () => {
 
   // DRUFF-14: a transform-kind node resolves to the custom-code category (SQL) instead of the
   // generic fallback.
-  it("resolves a transform-kind node to the custom-code category (DRUFF-14)", () => {
+  it("resolves a transform-kind node to custom code plus canonical operations", () => {
     const node = fixtureNode({ kind: "transform" });
 
-    expect(resolveConfigCategories(node).map((c) => c.id)).toEqual(["custom-code"]);
+    expect(resolveConfigCategories(node).map((c) => c.id)).toEqual([
+      "custom-code",
+      "pipeline-operations",
+    ]);
   });
 
   it("registry default args match the exported CONFIG_CATEGORIES/GENERIC_CONFIG_CATEGORY", () => {

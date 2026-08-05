@@ -76,6 +76,12 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-05 — **Dander owns executable graph operations** — Druff discovers a presentation-only
+  operation catalog and edits the same ordered `config.operations` stored in `PipelineGraph`.
+  Dander alone validates and executes the closed schema-preserving subset after ingestion;
+  provider write-back, raw-stream mutation, arbitrary SQL hooks, and a second Druff runtime remain
+  out of scope.
+
 - 2026-08-05 — **Cloud hosting serves only the compiled interface** — Druff's non-root,
   source-free image may run publicly on scale-to-zero Cloud Run, but all graph persistence,
   validation, execution, and planning still go to Dander's exact-origin loopback service. The
