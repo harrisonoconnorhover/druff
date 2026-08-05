@@ -2,42 +2,39 @@
 
 ## Finished
 
-- Added strict optional discovery from Dander's `GET /v1/plugin-catalog` endpoint.
-- Loaded curated package metadata alongside runtime connector discovery without blocking graphs.
-- Added a searchable catalog dialog with compatibility, support, validation, links, and install state.
-- Added copy-only exact manifest/package setup steps; Druff does not install or persist anything.
-- Preserved the existing palette and canonical graph round trip.
+- Added a pinned multi-stage production image for Next.js static output.
+- Run the final image as non-root on port 8080 with repository source excluded.
+- Added CI startup, source-boundary, vulnerability, and existing secret checks.
+- Documented hosted Druff as a public UI over Dander's local control plane.
 
 ## Try It
 
 ```bash
-dander graph serve --file /path/to/graph.yaml --config /path/to/dander.yaml
-pnpm dev
+docker build --platform linux/amd64 -t druff:local .
+docker run --rm -p 3000:8080 druff:local
 ```
-
-Choose **Open from Dander**, then **Browse catalog**.
 
 ## Checks
 
-- ESLint, TypeScript, and Prettier checks passed.
+- ESLint, TypeScript, Prettier, and production static export passed.
 - Full Vitest suite: 53 files and 572 tests passed.
-- All 9 Playwright workflows passed in Chromium, including catalog copy and filtering.
-- Production Next.js build passed.
+- All 9 Playwright workflows passed in Chromium.
+- Linux/amd64 image build, non-root/source-free checks, and HTTP startup smoke passed.
+- Docker Scout found zero fixed high/critical vulnerabilities in the 7.2 MB final image.
 
 ## Decisions
 
-- Keep catalog state separate from active connector descriptors.
-- Treat a missing/failed catalog as optional so canonical graph access remains available.
-- Keep installation, manifest editing, activation, runtime, and deployment in Dander/operator control.
+- Host only the compiled interface; Dander remains the loopback persistence/execution authority.
+- Use a minimal static server and a final image containing no Node/package tree or repository source.
 
 ## Remaining
 
-- Merge Dander through protected CI before opening the dependent Druff PR.
-- Merge Druff through protected CI after the Dander API contract reaches `main`.
-- Provision Dander and Druff together only in the later reviewed GCP slice.
+- Pass protected CI; final adversarial review is already clean.
+- Deploy the immutable image through Dander's reviewed Terraform plan in the disposable project.
+- Verify the hosted interface can open and save through an exact-origin local Dander service.
 
 ## Review First
 
-- `src/features/connector-library/catalog.ts`
-- `src/features/connector-library/ConnectorCatalogDialog.tsx`
-- `src/features/graph-io/useGraphPersistence.ts`
+- `Dockerfile`
+- `.github/workflows/ci.yml`
+- `README.md`

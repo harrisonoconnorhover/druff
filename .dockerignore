@@ -1,0 +1,16 @@
+.claude
+.git
+.github
+.next
+e2e
+node_modules
+steering
+test-results
+tickets
+HANDOFF.md
+playwright.config.ts
+tsconfig.tsbuildinfo
+vitest.config.ts
+vitest.setup.ts
+**/*.test.ts
+**/*.test.tsx
