@@ -1,53 +1,34 @@
-import { z } from "zod";
 import { localNetworkRequest } from "@/lib/local-network-request";
+import { OperationCatalogResponseSchema } from "@/lib/dander-contracts";
+import type {
+  OperationDescriptor as GeneratedOperationDescriptor,
+  OperationParameter as GeneratedOperationParameter,
+} from "@/generated/dander-contracts/types/operation-catalog";
 import {
   ComparisonOperatorSchema,
-  OperationKindSchema,
+  type ComparisonOperator,
 } from "@/features/pipeline-operations/operationConfig";
 
-const OperationParameterSchema = z
-  .object({
-    name: z.string().min(1),
-    display_name: z.string().min(1),
-    control: z.enum(["field", "integer", "scalar", "select", "conditions"]),
-    required: z.boolean(),
-    minimum: z.number().int().optional(),
-    default: z.string().optional(),
-    options: z.array(z.string()).optional(),
-    operators: z.array(ComparisonOperatorSchema).optional(),
-  })
-  .strict();
+type OperationParameter = Omit<GeneratedOperationParameter, "operators"> & {
+  operators?: ComparisonOperator[];
+};
 
-export const OperationDescriptorSchema = z
-  .object({
-    kind: OperationKindSchema,
-    display_name: z.string().min(1),
-    description: z.string(),
-    parameters: z.array(OperationParameterSchema),
-  })
-  .strict();
+export type OperationDescriptor = Omit<GeneratedOperationDescriptor, "parameters"> & {
+  parameters: OperationParameter[];
+};
 
-const OperationCatalogSchema = z
-  .object({
-    schema_version: z.literal(1),
-    operations: z.array(OperationDescriptorSchema),
-  })
-  .strict()
-  .superRefine((catalog, context) => {
-    const kinds = new Set<string>();
-    catalog.operations.forEach((operation, index) => {
-      if (kinds.has(operation.kind)) {
-        context.addIssue({
-          code: "custom",
-          message: "operation kinds must be unique",
-          path: ["operations", index, "kind"],
-        });
-      }
-      kinds.add(operation.kind);
-    });
-  });
-
-export type OperationDescriptor = z.infer<typeof OperationDescriptorSchema>;
+function normalizeOperation(operation: GeneratedOperationDescriptor): OperationDescriptor {
+  return {
+    ...operation,
+    parameters: (operation.parameters ?? []).map((parameter) => ({
+      ...parameter,
+      operators: parameter.operators?.flatMap((operator) => {
+        const parsed = ComparisonOperatorSchema.safeParse(operator);
+        return parsed.success ? [parsed.data] : [];
+      }),
+    })),
+  };
+}
 
 export interface OperationCatalogDiscovery {
   load(): Promise<OperationDescriptor[]>;
@@ -86,12 +67,12 @@ export class DanderApiOperationCatalogDiscovery implements OperationCatalogDisco
         `Dander operation discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = OperationCatalogSchema.safeParse(await response.json());
+    const parsed = OperationCatalogResponseSchema.safeParse(await response.json());
     if (!parsed.success) {
       throw new OperationCatalogDiscoveryError(
         "Dander returned operation metadata this Druff version cannot safely use.",
       );
     }
-    return parsed.data.operations;
+    return parsed.data.operations.map(normalizeOperation);
   }
 }

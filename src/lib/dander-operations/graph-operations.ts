@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { localNetworkRequest } from "@/lib/local-network-request";
+import { DeploymentPreviewResponseSchema } from "@/lib/dander-contracts";
+import type { DeploymentPreviewResponse } from "@/generated/dander-contracts/types/deployment-preview";
+
+// These status/validation/run shapes belong only to the existing single-graph loopback bridge and
+// contain its read-only GCP binding details. The published normalized Control v1 DTOs describe D2
+// hosted endpoints that do not exist yet, so replacing these three schemas here would break local
+// compatibility and prematurely begin D2. Deployment preview already matches Control v1 exactly.
 
 const GraphOperationBindingSchema = z.object({
   project: z.string().min(1),
@@ -59,22 +66,15 @@ const GraphRunResultSchema = z.object({
   execution: CloudRunExecutionSchema,
 });
 
-const GraphDeploymentPreviewSchema = z.object({
-  revision: z.string().min(1),
-  candidate_image: z.string().min(1).max(512),
-  plan_sha256: z.string().regex(/^[0-9a-f]{64}$/),
-  plan_summary: z.string().min(1).max(256),
-  plan_text: z
-    .string()
-    .min(1)
-    .max(2 * 1024 * 1024),
-  affected_jobs: z.array(z.string().min(1)).min(1),
-});
+const GraphDeploymentPreviewSchema = DeploymentPreviewResponseSchema.transform((preview) => ({
+  ...preview,
+  affected_jobs: preview.affected_jobs ?? [],
+}));
 
 export type GraphOperationsStatus = z.infer<typeof GraphOperationsStatusSchema>;
 export type GraphValidationResult = z.infer<typeof GraphValidationResultSchema>;
 export type GraphRunResult = z.infer<typeof GraphRunResultSchema>;
-export type GraphDeploymentPreview = z.infer<typeof GraphDeploymentPreviewSchema>;
+export type GraphDeploymentPreview = DeploymentPreviewResponse & { affected_jobs: string[] };
 
 export class GraphOperationsError extends Error {
   readonly status: number | null;

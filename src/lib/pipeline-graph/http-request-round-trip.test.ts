@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph/canvas-convert";
 import { decodeGraph, encodeGraph } from "@/lib/pipeline-graph/serialize";
-import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
+import { PipelineGraphSchema, type PipelineGraph } from "@/lib/pipeline-graph/schema";
 
 /**
  * DRUFF-12 AC5: a source node's `config.request` (Dander's `RequestSpec`, sibling
@@ -12,7 +12,7 @@ import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
  * (`secret:demo_source_key`, `field:updated_since`, …) — no real/sensitive data, per
  * `steering/02-engineering.md`.
  */
-const REQUEST_BEARING_GRAPH: PipelineGraph = {
+const REQUEST_BEARING_GRAPH = PipelineGraphSchema.parse({
   name: "http-request-round-trip",
   nodes: [
     {
@@ -45,7 +45,7 @@ const REQUEST_BEARING_GRAPH: PipelineGraph = {
     },
   ],
   edges: [{ from: "n1", to: "n2", metadata: {}, mappings: [] }],
-};
+});
 
 describe("config.request round trip (DRUFF-12 AC5)", () => {
   it("graph -> canvas -> graph is the identity on the graph", () => {

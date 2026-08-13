@@ -1,48 +1,9 @@
-import { z } from "zod";
 import {
   ConnectorDescriptorSchema,
   type ConnectorDescriptor,
 } from "@/features/connector-library/descriptors/types";
+import { ConnectorCatalogResponseSchema, type InstalledConnector } from "@/lib/dander-contracts";
 import { localNetworkRequest } from "@/lib/local-network-request";
-
-const DanderConnectorFieldSchema = z
-  .object({
-    name: z.string().min(1),
-    display_name: z.string().min(1),
-    data_type: z.string().min(1),
-    required: z.boolean(),
-  })
-  .strict();
-
-const DanderConnectorEndpointSchema = z
-  .object({
-    id: z.string().min(1),
-    display_name: z.string().min(1),
-    graph_binding: z.object({ connector: z.string().min(1), endpoint: z.string().min(1) }).strict(),
-    fields: z.array(DanderConnectorFieldSchema),
-  })
-  .strict();
-
-const DanderConnectorSchema = z
-  .object({
-    id: z.string().min(1),
-    display_name: z.string().min(1),
-    engine: z.string().min(1),
-    description: z.string(),
-    plugin: z
-      .object({
-        id: z.string().min(1),
-        distribution: z.string().min(1),
-        version: z.string().min(1),
-      })
-      .strict(),
-    endpoints: z.array(DanderConnectorEndpointSchema).min(1),
-  })
-  .strict();
-
-const DanderConnectorCatalogSchema = z
-  .object({ connectors: z.array(DanderConnectorSchema) })
-  .strict();
 
 export interface ConnectorDiscovery {
   load(): Promise<ConnectorDescriptor[]>;
@@ -86,18 +47,19 @@ export class DanderApiConnectorDiscovery implements ConnectorDiscovery {
         `Dander connector discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = DanderConnectorCatalogSchema.safeParse(await response.json());
+    const parsed = ConnectorCatalogResponseSchema.safeParse(await response.json());
     if (!parsed.success) {
       throw new ConnectorDiscoveryError(
         "Dander returned connector metadata this Druff version cannot safely use.",
       );
     }
-    return parsed.data.connectors.flatMap(projectConnector);
+    return (parsed.data.connectors ?? []).flatMap(projectConnector);
   }
 }
 
-function projectConnector(connector: z.infer<typeof DanderConnectorSchema>): ConnectorDescriptor[] {
-  return connector.endpoints.map((endpoint) => {
+function projectConnector(connector: InstalledConnector): ConnectorDescriptor[] {
+  const endpoints = connector.endpoints ?? [];
+  return endpoints.map((endpoint) => {
     if (
       endpoint.graph_binding.connector !== connector.id ||
       endpoint.graph_binding.endpoint !== endpoint.id
@@ -106,11 +68,11 @@ function projectConnector(connector: z.infer<typeof DanderConnectorSchema>): Con
         `Dander connector ${connector.id} returned an inconsistent graph binding.`,
       );
     }
-    const id = connector.endpoints.length === 1 ? connector.id : `${connector.id}:${endpoint.id}`;
+    const id = endpoints.length === 1 ? connector.id : `${connector.id}:${endpoint.id}`;
     return ConnectorDescriptorSchema.parse({
       id,
       name:
-        connector.endpoints.length === 1
+        endpoints.length === 1
           ? connector.display_name
           : `${connector.display_name} · ${endpoint.display_name}`,
       kind: "source",
@@ -134,10 +96,10 @@ function projectConnector(connector: z.infer<typeof DanderConnectorSchema>): Con
           help: "Endpoint name declared by the installed Dander connector plugin.",
         },
       ],
-      outputFields: endpoint.fields.map((field) => ({
+      outputFields: (endpoint.fields ?? []).map((field) => ({
         name: field.name,
         type: field.data_type,
-        nullable: !field.required,
+        nullable: !(field.required ?? false),
         description: field.display_name,
         metadata: {},
       })),

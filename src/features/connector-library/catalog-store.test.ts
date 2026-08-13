@@ -39,8 +39,7 @@ describe("plugin catalog store", () => {
   });
 
   it("rejects malformed server-owned entries", () => {
-    expect(() =>
-      setPluginCatalog([{ ...CONNECTOR, installed: false }] as PluginCatalogConnector[]),
-    ).toThrow();
+    const malformed = { ...CONNECTOR, secret_reference: "not-allowed" };
+    expect(() => setPluginCatalog([malformed])).toThrow();
   });
 });

@@ -1,43 +1,10 @@
-import { z } from "zod";
 import { localNetworkRequest } from "@/lib/local-network-request";
+import { PluginCatalogResponseSchema } from "@/lib/dander-contracts";
+import type { PluginCatalogRecord } from "@/generated/dander-contracts/types/plugin-catalog";
 
-export const PluginCatalogConnectorSchema = z
-  .object({
-    id: z.string().min(1),
-    display_name: z.string().min(1),
-    description: z.string(),
-    distribution: z.string().min(1),
-    version: z.string().min(1),
-    dander_specifier: z.string().min(1),
-    compatible: z.boolean(),
-    support_status: z.string().min(1),
-    validation_status: z.string().min(1),
-    documentation_url: z.url(),
-    pypi_url: z.url(),
-    repository_url: z.url(),
-    installed: z.boolean(),
-    installed_version: z.string().min(1).nullable(),
-  })
-  .strict()
-  .superRefine((connector, context) => {
-    if (connector.installed !== (connector.installed_version !== null)) {
-      context.addIssue({
-        code: "custom",
-        message: "installed and installed_version must agree",
-        path: ["installed_version"],
-      });
-    }
-  });
-
-const PluginCatalogSchema = z
-  .object({
-    schema_version: z.literal(1),
-    dander_version: z.string().min(1),
-    connectors: z.array(PluginCatalogConnectorSchema),
-  })
-  .strict();
-
-export type PluginCatalogConnector = z.infer<typeof PluginCatalogConnectorSchema>;
+export type PluginCatalogConnector = Omit<PluginCatalogRecord, "installed_version"> & {
+  installed_version: string | null;
+};
 
 export interface PluginCatalogDiscovery {
   load(): Promise<PluginCatalogConnector[]>;
@@ -79,12 +46,15 @@ export class DanderApiPluginCatalogDiscovery implements PluginCatalogDiscovery {
         `Dander plugin catalog failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = PluginCatalogSchema.safeParse(await response.json());
+    const parsed = PluginCatalogResponseSchema.safeParse(await response.json());
     if (!parsed.success) {
       throw new PluginCatalogDiscoveryError(
         "Dander returned plugin-catalog metadata this Druff version cannot safely use.",
       );
     }
-    return parsed.data.connectors;
+    return (parsed.data.connectors ?? []).map((connector) => ({
+      ...connector,
+      installed_version: connector.installed_version ?? null,
+    }));
   }
 }

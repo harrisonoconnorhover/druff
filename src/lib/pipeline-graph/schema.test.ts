@@ -13,7 +13,7 @@ describe("PipelineNodeSchema", () => {
       id: "n1",
       type: "source",
       name: "N1",
-      config: {},
+      config: { connector: null, endpoint: null },
       fields: [],
     });
   });
@@ -26,20 +26,20 @@ describe("PipelineNodeSchema", () => {
       params: { endpoint: "/x" },
     });
 
-    expect(node.config).toEqual({ endpoint: "/x" });
+    expect(node.config).toEqual({ connector: null, endpoint: "/x" });
     expect(node).not.toHaveProperty("params");
   });
 
-  it("prefers an explicit `config` over `params` when both are present", () => {
-    const node = PipelineNodeSchema.parse({
-      id: "n1",
-      type: "source",
-      name: "N1",
-      config: { a: 1 },
-      params: { b: 2 },
-    });
-
-    expect(node.config).toEqual({ a: 1 });
+  it("rejects ambiguous input containing both `config` and `params`", () => {
+    expect(() =>
+      PipelineNodeSchema.parse({
+        id: "n1",
+        type: "source",
+        name: "N1",
+        config: { a: 1 },
+        params: { b: 2 },
+      }),
+    ).toThrow();
   });
 
   it("throws on a missing required field", () => {
@@ -55,7 +55,16 @@ describe("PipelineNodeSchema", () => {
     });
 
     expect(node.fields).toEqual([
-      { name: "f1", type: "STRING", nullable: true, description: null, metadata: {} },
+      {
+        name: "f1",
+        type: "STRING",
+        cast_to: null,
+        nullable: true,
+        description: null,
+        tests: [],
+        metadata: {},
+        extensions: [],
+      },
     ]);
   });
 });
@@ -66,6 +75,8 @@ describe("TransformationSchema", () => {
       kind: "direct",
       expression: null,
       constant: null,
+      function: null,
+      arguments: {},
       inputs: [],
       metadata: {},
     });

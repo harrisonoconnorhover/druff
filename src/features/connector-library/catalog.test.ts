@@ -55,7 +55,7 @@ describe("DanderApiPluginCatalogDiscovery", () => {
     ).resolves.toEqual([]);
   });
 
-  it("rejects unknown fields and inconsistent installation status", async () => {
+  it("rejects fields outside Dander's generated catalog contract", async () => {
     const sensitive = structuredClone(CATALOG) as typeof CATALOG & { secret_reference: string };
     sensitive.secret_reference = "not-allowed";
     const sensitiveFetch = vi
@@ -64,14 +64,5 @@ describe("DanderApiPluginCatalogDiscovery", () => {
     await expect(
       new DanderApiPluginCatalogDiscovery("http://dander.test", sensitiveFetch).load(),
     ).rejects.toThrow(PluginCatalogDiscoveryError);
-
-    const inconsistent = structuredClone(CATALOG);
-    inconsistent.connectors[0].installed = false;
-    const inconsistentFetch = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response(JSON.stringify(inconsistent), { status: 200 }));
-    await expect(
-      new DanderApiPluginCatalogDiscovery("http://dander.test", inconsistentFetch).load(),
-    ).rejects.toThrow(/cannot safely use/);
   });
 });

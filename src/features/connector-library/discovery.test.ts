@@ -83,7 +83,7 @@ describe("DanderApiConnectorDiscovery", () => {
     ).resolves.toEqual([]);
   });
 
-  it("rejects inconsistent bindings and unexpected sensitive properties", async () => {
+  it("rejects inconsistent bindings and unknown fields at the generated contract boundary", async () => {
     const inconsistent = structuredClone(CATALOG);
     inconsistent.connectors[0].endpoints[0].graph_binding.endpoint = "contacts";
     const badBinding = vi
@@ -101,5 +101,32 @@ describe("DanderApiConnectorDiscovery", () => {
     await expect(
       new DanderApiConnectorDiscovery("http://dander.test", badShape).load(),
     ).rejects.toThrow(/cannot safely use/);
+  });
+
+  it("applies published optional-field defaults only in the UI projection", async () => {
+    const minimal = structuredClone(CATALOG);
+    delete (minimal.connectors[0] as Partial<(typeof CATALOG)["connectors"][number]>).description;
+    delete (
+      minimal.connectors[0].endpoints[0].fields[0] as Partial<
+        (typeof CATALOG)["connectors"][number]["endpoints"][number]["fields"][number]
+      >
+    ).required;
+    const fetchConnectors = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(JSON.stringify(minimal), { status: 200 }));
+
+    const result = await new DanderApiConnectorDiscovery(
+      "http://dander.test",
+      fetchConnectors,
+    ).load();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        outputFields: expect.arrayContaining([
+          expect.objectContaining({ name: "Id", nullable: true }),
+        ]),
+      }),
+    ]);
+    expect(minimal.connectors[0].endpoints[0].fields[0]).not.toHaveProperty("required");
   });
 });

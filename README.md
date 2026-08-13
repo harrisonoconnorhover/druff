@@ -30,7 +30,8 @@ read-only instead of being rewritten.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log). The accepted documentation-only Druff 1.0 architecture checkpoint is
-in `steering/03-control-plane-roadmap.md`; none of its hosted behavior is implemented yet.
+in `steering/03-control-plane-roadmap.md`. Druff's DTOs now come from Dander's published contract
+bundle; hosted graph storage, identity, and run APIs remain later phases.
 
 ## Stack
 
@@ -40,6 +41,7 @@ Next.js (App Router) + TypeScript · React Flow · Tailwind + shadcn/ui · Zusta
 
 ```
 src/                Next.js app (src/app), features (src/features/pipeline-canvas), src/lib
+src/generated/      generated Dander DTO types, validators, fixtures, and exact bundle provenance
 steering/           binding rules for humans + agents (read these)
 tickets/            work items
 scripts/            dev tooling (e.g. the workflow monitor)
@@ -53,6 +55,15 @@ scripts/            dev tooling (e.g. the workflow monitor)
 ```bash
 pnpm install
 pnpm dev              # http://localhost:3000
+```
+
+Contract output is generated only from the pinned public
+`dander-platform==0.9.0rc18` wheel on PyPI. The generator verifies the wheel, manifest, every file,
+and the whole bundle before writing output; it never reads a sibling Dander checkout.
+
+```bash
+pnpm contracts:check     # re-generate in a temporary directory and fail on committed drift
+pnpm contracts:generate  # intentionally refresh committed output after updating the artifact pin
 ```
 
 In a second terminal, select the graph file Dander may expose:
@@ -124,6 +135,7 @@ files are editor drafts, not deployable Dander manifests.
 pnpm lint             # eslint
 pnpm typecheck        # tsc --noEmit
 pnpm format:check     # prettier --check .
+pnpm contracts:check # exact published Dander contract and generated-output drift
 pnpm test             # vitest (unit/component)
 pnpm test:e2e         # playwright (canvas drag/drop/connect — not reliable under jsdom)
 pnpm build            # production build

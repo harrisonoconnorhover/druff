@@ -1,16 +1,16 @@
-import {
-  PluginCatalogConnectorSchema,
-  type PluginCatalogConnector,
-} from "@/features/connector-library/catalog";
+import type { PluginCatalogConnector } from "@/features/connector-library/catalog";
+import { PluginCatalogResponseSchema } from "@/lib/dander-contracts";
 
 let pluginCatalogSnapshot: PluginCatalogConnector[] = [];
 const listeners = new Set<() => void>();
 
 /** Replaces the catalog atomically after validating every Dander-owned entry. */
 export function setPluginCatalog(connectors: PluginCatalogConnector[]): void {
-  pluginCatalogSnapshot = connectors.map((connector) =>
-    PluginCatalogConnectorSchema.parse(connector),
-  );
+  const parsed = PluginCatalogResponseSchema.parse({ dander_version: "druff-store", connectors });
+  pluginCatalogSnapshot = (parsed.connectors ?? []).map((connector) => ({
+    ...connector,
+    installed_version: connector.installed_version ?? null,
+  }));
   for (const listener of listeners) listener();
 }
 
