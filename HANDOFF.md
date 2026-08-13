@@ -2,41 +2,37 @@
 
 ## Finished
 
-- Reconciled Josh's upstream graph-client ancestry into the unified Dander persistence path.
-- Deployed the source-free static interface at
-  <https://dander-druff-yos2b3gbca-uc.a.run.app> through reviewed Terraform.
-- Updated project and security guidance from scaffold placeholders to the implemented loopback
-  Dander boundary.
-- Corrected the repository's Dander link and current product status.
+- Recorded exact Dander/Druff commits, green CI, Phase 7 cleanup, and current main protection state.
+- Protected Druff `main` with PR, required-CI, force-push, and deletion ruleset `20801422`.
+- Confirmed Druff can remain a static export for the complete bounded control-plane experience.
+- Inventoried schema drift and defined Dander-produced generated contracts instead of manual mirrors.
+- Defined external OIDC/PKCE, graph revision, migration, PR, cost, and compatibility boundaries.
 
 ## Try It
 
-```bash
-pnpm dev
-# Start `dander graph serve`, then choose Open from Dander.
-```
+Read `steering/03-control-plane-roadmap.md`; the current loopback workflow remains unchanged.
 
 ## Checks
 
-- ESLint, TypeScript, and Prettier passed.
-- All 586 Vitest tests and the production static build passed.
-- Local Markdown links and `git diff --check` passed.
-- The retained Terraform record shows only the approved Druff service account and Cloud Run
-  service were added, followed by a no-drift plan.
+- `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm build` passed.
+- `pnpm test` passed: 56 files and 586 tests.
+- `pnpm test:e2e` passed: 10 browser journeys.
+- Protected CI, the source-free image check, and the secret scan remain required before merge.
 
 ## Decisions
 
-- Druff remains a public static shell; Dander's exact-origin loopback service owns privileged
-  graph, execution, and planning operations.
-- No duplicate graph client, hosted privileged API, manifest write-back, or Terraform apply path.
+- Druff remains static and cloud-ignorant; Dander remains the semantic and authorization authority.
+- Public bootstrap and server trust settings derive from one Dander deployment input.
+- Generated DTOs and GraphStore-first routing precede hosted UI implementation.
 
 ## Remaining
 
-- Use the hosted interface with an operator-started Dander graph service when interactive
-  authoring or execution is needed.
+- Merge the paired D0 documentation PRs after checks and completion review.
+- Consume only the published Dander contract artifact in DRUFF-24.
+- Keep OIDC registration and provider work behind separate human approval.
 
 ## Review First
 
-- `steering/01-security.md`
-- `steering/00-project-overview.md`
-- `README.md`
+- `steering/03-control-plane-roadmap.md`
+- `tickets/DRUFF-24-generated-control-contracts.md`
+- `tickets/DRUFF-25-static-oidc-bootstrap.md`

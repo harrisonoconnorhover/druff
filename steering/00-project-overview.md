@@ -80,6 +80,14 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-08-13 — **Druff 1.0 remains a static generated client of one Dander Control API** — Dander
+  keeps graph and operation semantics, authorization, storage, execution, providers, state, and
+  deployment. Druff uses an external-OIDC public client with authorization code plus PKCE and
+  generated Dander transport contracts; it gains no Next.js backend or provider client. Hosted
+  multi-graph work starts only after Dander publishes explicit transport DTOs and lands a
+  GraphStore port with opaque revisions separate from canonical content hashes. See
+  `03-control-plane-roadmap.md`.
+
 - 2026-08-05 — **Josh's graph-client branch is reconciled into the unified persistence path** —
   upstream commit `a1c526b` established explicit Dander graph open/save and schema-alignment work.
   The fork's later `GraphPersistence` controller already provides that contract plus conflict
