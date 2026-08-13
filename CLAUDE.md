@@ -23,12 +23,13 @@ importing Dander's Python types directly.
 
 ## Steering — the contract (read these; they are binding)
 
-These three are **universal** — they apply to every agent and every change, so they're loaded
+These four are **universal** — they apply to every agent and every change, so they're loaded
 into every session:
 
 @steering/00-project-overview.md
 @steering/01-security.md
 @steering/02-engineering.md
+@steering/03-control-plane-roadmap.md
 
 **Language rules load on demand (Kiro-style conditional inclusion), not globally** — an agent
 reads only the file matching what it's touching:

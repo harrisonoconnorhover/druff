@@ -29,7 +29,8 @@ runtime simply exposes no operation palette, and an unknown/newer operation stay
 read-only instead of being rewritten.
 
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
-module map, decision log).
+module map, decision log). The accepted documentation-only Druff 1.0 architecture checkpoint is
+in `steering/03-control-plane-roadmap.md`; none of its hosted behavior is implemented yet.
 
 ## Stack
 

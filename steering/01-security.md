@@ -52,3 +52,10 @@
 - [ ] Browser-visible APIs return only the minimum presentation/operation metadata required.
 - [ ] The Dander control service remains loopback-only and exact-origin scoped.
 - [ ] New dependencies are justified and the lockfile changes with them.
+
+## Roadmap boundary
+
+The authenticated hosted Control API described in `03-control-plane-roadmap.md` is not implemented
+at the current baseline. When that work lands, external OIDC tokens remain human identity only,
+access tokens stay in browser memory, and Dander validates and authorizes every hosted request.
+That future mode must not weaken or silently replace the current loopback-only exact-origin path.
