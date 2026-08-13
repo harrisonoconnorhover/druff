@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph/canvas-convert";
 import { decodeGraph, encodeGraph } from "@/lib/pipeline-graph/serialize";
-import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
+import { PipelineGraphSchema, type PipelineGraph } from "@/lib/pipeline-graph/schema";
 
 /**
  * DRUFF-17 AC4: a target node's `config.writer` (Dander's `WriterConfig`) survives
@@ -12,7 +12,7 @@ import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
  * benign identifiers only (`analytics`, `dim_customer`, `customer_id`, `updated_at`) — no
  * real/sensitive data, per `steering/02-engineering.md`.
  */
-const WRITER_BEARING_GRAPH: PipelineGraph = {
+const WRITER_BEARING_GRAPH = PipelineGraphSchema.parse({
   name: "writer-config-round-trip",
   nodes: [
     {
@@ -48,7 +48,7 @@ const WRITER_BEARING_GRAPH: PipelineGraph = {
     },
   ],
   edges: [{ from: "n1", to: "n2", metadata: {}, mappings: [] }],
-};
+});
 
 describe("config.writer round trip (DRUFF-17 AC4)", () => {
   it("graph -> canvas -> graph is the identity on the graph", () => {

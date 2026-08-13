@@ -4,3 +4,6 @@ allowBuilds:
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+overrides:
+  fast-uri: 3.1.5
+  js-yaml: 4.3.1

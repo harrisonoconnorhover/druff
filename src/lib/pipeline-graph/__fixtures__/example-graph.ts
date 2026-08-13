@@ -1,4 +1,4 @@
-import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
+import { PipelineGraphSchema } from "@/lib/pipeline-graph/schema";
 
 /**
  * Representative, non-sensitive fixture graph adapted from Dander's own
@@ -8,7 +8,7 @@ import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
  * must round-trip: two declared source fields, a direct mapping, an `expression` transformation
  * with `inputs`, a `left` join, and a second, join-less edge into a third node.
  */
-export const EXAMPLE_GRAPH: PipelineGraph = {
+export const EXAMPLE_GRAPH = PipelineGraphSchema.parse({
   name: "crm_to_warehouse_example",
   nodes: [
     {
@@ -85,7 +85,7 @@ export const EXAMPLE_GRAPH: PipelineGraph = {
       mappings: [],
     },
   ],
-};
+});
 
 /**
  * Hand-authored YAML text decoding to `EXAMPLE_GRAPH` — written independently of `encodeGraph`

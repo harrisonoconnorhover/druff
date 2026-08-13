@@ -1,15 +1,12 @@
-import {
-  OperationDescriptorSchema,
-  type OperationDescriptor,
-} from "@/features/pipeline-operations/catalog";
+import type { OperationDescriptor } from "@/features/pipeline-operations/catalog";
+import { OperationCatalogResponseSchema } from "@/lib/dander-contracts";
 
 let operationCatalogSnapshot: OperationDescriptor[] = [];
 const listeners = new Set<() => void>();
 
 export function setOperationCatalog(operations: OperationDescriptor[]): void {
-  operationCatalogSnapshot = operations.map((operation) =>
-    OperationDescriptorSchema.parse(operation),
-  );
+  OperationCatalogResponseSchema.parse({ operations });
+  operationCatalogSnapshot = structuredClone(operations);
   for (const listener of listeners) listener();
 }
 

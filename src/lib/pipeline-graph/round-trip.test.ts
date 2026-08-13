@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canvasToGraph, extractLayout, graphToCanvas } from "@/lib/pipeline-graph/canvas-convert";
 import { EXAMPLE_GRAPH } from "@/lib/pipeline-graph/__fixtures__/example-graph";
 import { decodeGraph, encodeGraph } from "@/lib/pipeline-graph/serialize";
-import type { PipelineGraph } from "@/lib/pipeline-graph/schema";
+import { PipelineGraphSchema } from "@/lib/pipeline-graph/schema";
 
 /**
  * End-to-end chain the AC calls out explicitly: canvas -> graph -> YAML/JSON -> graph -> canvas.
@@ -49,7 +49,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
   // DRUFF-7 AC5: every `NodeField` key round-trips through canvas -> graph -> YAML/JSON -> graph
   // -> canvas unchanged, against the *existing* model (this ticket's Design found no schema/
   // serializer change was needed — see `canvas-types.ts`/`schema.ts`/`canvas-convert.ts`).
-  const FULLY_POPULATED_FIELDS_GRAPH: PipelineGraph = {
+  const FULLY_POPULATED_FIELDS_GRAPH = PipelineGraphSchema.parse({
     name: "field-schema-round-trip",
     nodes: [
       {
@@ -70,7 +70,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
       },
     ],
     edges: [],
-  };
+  });
 
   it.each(["yaml", "json"] as const)(
     "a node's fully-populated NodeField (name/type/nullable=false/description/metadata) round-trips over %s",
@@ -90,7 +90,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
   // canvas -> graph -> YAML/JSON -> graph -> canvas unchanged. `EXAMPLE_GRAPH` above already
   // exercises an `expression` transformation with `inputs`; this fixture locks the `constant` half
   // of the on-disk keys (`transformation.kind`/`constant`) this ticket's Design calls out.
-  const CONSTANT_MAPPING_GRAPH: PipelineGraph = {
+  const CONSTANT_MAPPING_GRAPH = PipelineGraphSchema.parse({
     name: "constant-mapping-round-trip",
     nodes: [
       {
@@ -149,7 +149,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
         ],
       },
     ],
-  };
+  });
 
   it.each(["yaml", "json"] as const)(
     "a mapping's constant transformation, including an explicit null constant, round-trips over %s",
@@ -167,7 +167,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
   // DRUFF-13 AC3: a trigger node's `config.trigger` (opaque record data DRUFF-4's `PipelineNodeSchema`
   // already carries losslessly via its `config: z.record(...)` field) round-trips through
   // canvas -> graph -> YAML/JSON -> graph -> canvas unchanged, with no schema change needed.
-  const TRIGGER_CONFIG_GRAPH: PipelineGraph = {
+  const TRIGGER_CONFIG_GRAPH = PipelineGraphSchema.parse({
     name: "trigger-config-round-trip",
     nodes: [
       {
@@ -179,7 +179,7 @@ describe("canvas <-> graph <-> YAML/JSON round trip", () => {
       },
     ],
     edges: [],
-  };
+  });
 
   it.each(["yaml", "json"] as const)(
     "a trigger node's config.trigger round-trips over %s",
