@@ -15,7 +15,7 @@
  * `node_modules`, so nothing here needs to be committed.
  */
 import { createRequire } from "node:module";
-import { existsSync, cpSync, mkdirSync } from "node:fs";
+import { existsSync, cpSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,6 +43,9 @@ function main() {
     process.exit(1);
   }
 
+  // Always replace the generated tree. A removed/renamed dependency asset must not survive from a
+  // previous build and silently change the static artifact inventory.
+  rmSync(join(repoRoot, "public", "monaco"), { recursive: true, force: true });
   mkdirSync(destDir, { recursive: true });
   cpSync(sourceDir, destDir, { recursive: true });
   console.log(`[copy-monaco-assets] copied ${sourceDir} -> ${destDir}`);

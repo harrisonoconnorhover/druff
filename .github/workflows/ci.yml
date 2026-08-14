@@ -25,6 +25,7 @@ jobs:
       - run: corepack enable && corepack prepare pnpm@11.9.0 --activate
       - run: pnpm install --frozen-lockfile
       - run: pnpm contracts:check
+      - run: pnpm test:artifact
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm format:check
@@ -37,26 +38,144 @@ jobs:
     name: Source-free container
     runs-on: ubuntu-latest
     needs: [frontend]
+    env:
+      OCI_REGISTRY: 127.0.0.1:5000
+      OCI_REPOSITORY: druff/ci
+      TRIVY_INSECURE: "true"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
-      - name: Build production image
-        run: docker build --tag druff-ci:${{ github.sha }} .
-      - name: Verify runtime and source-free boundary
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.0.0
+      - name: Start disposable local registry
+        run: >-
+          docker run --detach --name druff-ci-registry --publish 127.0.0.1:5000:5000
+          registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.0.0
+        with:
+          driver-opts: network=host
+          buildkitd-config-inline: |
+            [registry."127.0.0.1:5000"]
+              http = true
+              insecure = true
+      - name: Prepare two clean source contexts
         run: |
-          test "$(docker inspect --format '{{.Config.User}}' druff-ci:${{ github.sha }})" = "65532:65532"
-          docker run --rm --entrypoint sh druff-ci:${{ github.sha }} -c \
-            'test ! -d /app/src && test ! -d /app/.git && test ! -f /app/pnpm-lock.yaml'
-          container_id="$(docker run --detach --publish 3000:8080 druff-ci:${{ github.sha }})"
-          trap 'docker rm --force "$container_id"' EXIT
-          curl --fail --retry 20 --retry-delay 1 --retry-all-errors http://127.0.0.1:3000/
-      - name: Scan image
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/context-a" "$RUNNER_TEMP/context-b"
+          git archive --format=tar "$GITHUB_SHA" | tar -xf - -C "$RUNNER_TEMP/context-a"
+          git archive --format=tar "$GITHUB_SHA" | tar -xf - -C "$RUNNER_TEMP/context-b"
+          {
+            echo "SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$GITHUB_SHA")"
+            echo "SOURCE_CREATED=$(git show -s --format=%cI "$GITHUB_SHA")"
+            echo "DRUFF_VERSION=$(node -p 'require("./package.json").version')"
+          } >> "$GITHUB_ENV"
+      - name: Build exact multi-platform candidate with attestations
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --no-cache \
+            --sbom=true \
+            --provenance=mode=max \
+            --build-arg SOURCE_REVISION="$GITHUB_SHA" \
+            --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            --build-arg SOURCE_CREATED="$SOURCE_CREATED" \
+            --build-arg DRUFF_VERSION="$DRUFF_VERSION" \
+            --tag "$OCI_REGISTRY/$OCI_REPOSITORY:source" \
+            --push \
+            "$RUNNER_TEMP/context-a"
+      - name: Repeat the static build from an isolated clean context
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64 \
+            --no-cache \
+            --sbom=false \
+            --provenance=false \
+            --build-arg SOURCE_REVISION="$GITHUB_SHA" \
+            --build-arg SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            --build-arg SOURCE_CREATED="$SOURCE_CREATED" \
+            --build-arg DRUFF_VERSION="$DRUFF_VERSION" \
+            --tag "$OCI_REGISTRY/$OCI_REPOSITORY:repeat" \
+            --push \
+            "$RUNNER_TEMP/context-b"
+      - name: Bind manifests, attestations, and reproducible static layer
+        id: inspect
+        run: |
+          set -euo pipefail
+          record="$RUNNER_TEMP/oci-verification.json"
+          node scripts/oci-artifact.mjs inspect \
+            --registry "http://$OCI_REGISTRY" \
+            --repository "$OCI_REPOSITORY" \
+            --source-tag source \
+            --repeat-tag repeat \
+            --expected-revision "$GITHUB_SHA" \
+            --expected-epoch "$SOURCE_DATE_EPOCH" \
+            --record "$record"
+          {
+            echo "index_digest=$(jq -r .source_index_digest "$record")"
+            echo "amd64_digest=$(jq -r '.platform_manifests["linux/amd64"]' "$record")"
+            echo "arm64_digest=$(jq -r '.platform_manifests["linux/arm64"]' "$record")"
+          } >> "$GITHUB_OUTPUT"
+      - name: Verify exact runtime, export, routes, and headers
+        run: |
+          set -euo pipefail
+          image="$OCI_REGISTRY/$OCI_REPOSITORY@${{ steps.inspect.outputs.amd64_digest }}"
+          docker pull --platform linux/amd64 "$image"
+          test "$(docker inspect --format '{{.Config.User}}' "$image")" = "65532:65532"
+          docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --entrypoint sh "$image" -c \
+            'test ! -d /app/src && test ! -d /app/.git && test ! -f /app/pnpm-lock.yaml && test ! -f /app/package.json'
+
+          rootfs="$RUNNER_TEMP/rootfs"
+          mkdir -p "$rootfs"
+          export_id="$(docker create "$image")"
+          trap 'docker rm --force "$export_id" >/dev/null 2>&1 || true' EXIT
+          docker export "$export_id" | tar -xf - -C "$rootfs"
+          docker rm "$export_id"
+          export_id=""
+          node scripts/static-artifact.mjs --check --root "$rootfs/app"
+
+          runtime_id="$(docker run --detach --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --publish 127.0.0.1:3000:8080 "$image")"
+          trap 'docker rm --force "$runtime_id" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/readyz >/dev/null; then break; fi
+            if [ "$attempt" -eq 30 ]; then exit 1; fi
+            sleep 1
+          done
+          node scripts/verify-static-server.mjs --base-url http://127.0.0.1:3000
+      - name: Scan exact linux/amd64 runnable manifest
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          image-ref: druff-ci:${{ github.sha }}
+          image-ref: 127.0.0.1:5000/druff/ci@${{ steps.inspect.outputs.amd64_digest }}
           format: table
           exit-code: 1
           ignore-unfixed: true
+          scanners: vuln,secret
           severity: CRITICAL,HIGH
+      - name: Scan exact linux/arm64 runnable manifest
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: 127.0.0.1:5000/druff/ci@${{ steps.inspect.outputs.arm64_digest }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          scanners: vuln,secret
+          severity: CRITICAL,HIGH
+      - name: Promote the exact reviewed index without rebuilding
+        run: |
+          set -euo pipefail
+          node scripts/oci-artifact.mjs promote \
+            --registry "http://$OCI_REGISTRY" \
+            --repository "$OCI_REPOSITORY" \
+            --source-digest "${{ steps.inspect.outputs.index_digest }}" \
+            --destination-tag promoted \
+            --record "$RUNNER_TEMP/oci-promotion.json"
+      - name: Remove disposable local registry
+        if: always()
+        run: docker rm --force druff-ci-registry >/dev/null 2>&1 || true
 
   secrets:
     name: Secret scan
