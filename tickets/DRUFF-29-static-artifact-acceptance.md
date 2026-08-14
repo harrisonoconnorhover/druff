@@ -1,7 +1,7 @@
 ---
 id: DRUFF-29
 title: Harden the static artifact and control-plane journey
-status: in-review
+status: done
 component: frontend
 epic: self-hosted-control-plane
 depends_on: [DRUFF-25, DRUFF-26, DRUFF-27, DRUFF-28]
@@ -21,7 +21,7 @@ provider Terraform or live endpoint.
 - [x] Playwright covers login/test identity, compatibility, graph CRUD/conflict, catalogs,
       validation, preview, run/status/logs/cancel/replay, and reopen after service restart.
 - [x] Static export is retained and no Next.js server/runtime dependency appears.
-- [ ] Full CI, artifact/secret scans, and independent completion review pass.
+- [x] Full CI, artifact/secret scans, and independent completion review pass.
 
 ## Design
 
@@ -68,4 +68,7 @@ byte-preserving raw-index promotion with every attestation descriptor retained.
 The final review found contradictory default provenance when staged sources built with an
 `unrecorded` Next ID but the manifest independently claimed HEAD. One shared resolver now supplies
 both values, refuses partial explicit metadata, and never attributes a dirty worktree to HEAD. The
-focused clean/dirty regression covers the correction. Protected CI evidence remains pending.
+focused clean/dirty regression covers the correction. This was the review's only material finding;
+the corrected artifact then passed protected PR run `31802260747` at implementation commit
+`9a61313f44cf9cfe3a61b66800de4b35871bef27`, including both exact runnable-manifest scans and exact
+local-registry promotion.

@@ -20,7 +20,7 @@ a read-only root plus a `/tmp` tmpfs to exercise the exact static runtime.
 - Local amd64/arm64 OCI inspection found one exact shared layer plus per-platform SPDX/SLSA; exact
   raw-index promotion passed. Local read-only Caddy route/header/export verification passed.
 - Full Vitest passes 66 files/669 tests and all 11 Playwright journeys pass with the committed CSP;
-  both exact runnable-digest scans remain for protected CI.
+  protected PR run `31802260747` passed both exact runnable-digest scans and local promotion.
 
 ## Decisions
 
@@ -30,7 +30,7 @@ a read-only root plus a `/tmp` tmpfs to exercise the exact static runtime.
 
 ## Remaining
 
-- Open and merge the protected PR, then verify exact-main CI and record its evidence.
+- Merge the protected PR, then verify exact-main CI and record its evidence.
 - Continue D6 in roadmap order; do not publish a public Druff image without separate approval.
 
 ## Review First
