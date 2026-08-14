@@ -1,10 +1,12 @@
 # `graph-io`
 
-Canonical graph Open/Save and the canvas ⇄ source view toggle. This is glue between the canvas
-store, the pure pipeline-graph model/converters, and three browser affordances:
+Canonical graph collection/open/save and the canvas ⇄ source view toggle. This is glue between the
+canvas store, the pure pipeline-graph model/converters, and three browser affordances:
 
-- **Dander persistence** — explicit Open/Save against the graph selected by `dander graph serve`.
-  Every save carries the last ETag revision; conflicts are visible and never overwrite the file.
+- **Dander persistence** — loopback mode retains explicit Open/Save against `dander graph serve`.
+  Hosted mode lists logical projects and paginated graph summaries, then creates, opens, saves, or
+  deletes through Dander's generated Control API contract. Every mutation carries the exact opaque
+  ETag; conflicts are visible and never overwrite a graph.
 - **File export/import** — `GraphToolbar` exports explicitly named Druff graph drafts and imports
   either those drafts or a version-1 `dander.yaml`, via `src/lib/graph-io/graph-file.ts`.
 - **Canvas ⇄ source toggle** — `GraphEditor` owns `viewMode` and renders either `PipelineCanvas` or
@@ -12,11 +14,13 @@ store, the pure pipeline-graph model/converters, and three browser affordances:
 
 ## Files
 
-- `GraphEditor.tsx` — container: owns `viewMode`, mounts persistence, renders the toolbar above the
-  active view, and passes the opened revision to the separate graph-operations feature.
-- `GraphToolbar.tsx` — Dander Open/Save, draft export, graph/manifest import, status, and view toggle.
+- `GraphEditor.tsx` — chooses the existing loopback seam or authenticated hosted collection client.
+  Legacy deployed-job operations remain loopback-only until their dedicated hosted tickets.
+- `GraphToolbar.tsx` / `RemoteGraphDialog.tsx` — hosted browse/create/open/save/reload/confirmed
+  delete, local Open/Save, draft import/export, status, identities, and the view toggle.
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
-- `useGraphPersistence.ts` — explicit async Open/Save controller with dirty/conflict state.
+- `useGraphPersistence.ts` — one async controller for local and hosted persistence, retaining
+  dirty/saving/conflict/reload state and detaching imports or deleted graphs safely.
 
 On Open, the controller also discovers the connected runtime's presentation-only connector,
 package, and transform-operation catalogs. Catalog failure never blocks graph access. The operation
@@ -36,10 +40,10 @@ never re-encoded as or written back to `dander.yaml`.
 - `SourceView` is **read-only** — editing YAML/JSON back into the canvas is a future ticket.
 - The Dander manifest projection does not read connector/model file contents and cannot write back
   or deploy changes.
-- Dander exposes exactly one operator-selected graph file. Multi-file browsing is intentionally
-  deferred until the product has a real graph registry convention.
+- Hosted list responses remain document-free and bounded. Only an explicit Open retrieves a graph;
+  opaque pagination cursors are sent back unchanged.
 - Saving normalizes YAML formatting/comments. Model fields are preserved; byte formatting is not.
 - Execution controls live in `src/features/graph-operations` and can only start an already-deployed,
   operator-bound job. Terraform deployment remains out of scope.
-- Provider create/update/delete, deleted-record feeds, arbitrary SQL hooks, and browser-side
-  operation execution are out of scope.
+- Provider branches, deleted-record feeds, arbitrary SQL hooks, and browser-side operation
+  execution are out of scope. The hosted browser sees only provider-neutral Control API DTOs.

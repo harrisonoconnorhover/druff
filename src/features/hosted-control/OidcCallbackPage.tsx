@@ -2,16 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SIGNIN_CALLBACK_PATH, SIGNOUT_CALLBACK_PATH } from "@/features/hosted-control/bootstrap";
 import { useHostedControl } from "@/features/hosted-control/HostedControlProvider";
+import { HostedWorkspace } from "@/features/hosted-control/HostedWorkspace";
 
 export function OidcCallbackPage({ kind }: { kind: "signin" | "signout" }) {
   const control = useHostedControl();
-  const router = useRouter();
   const started = useRef(false);
   const callbackUrl = useRef<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   useEffect(() => {
     if (callbackUrl.current !== null) return;
@@ -28,11 +28,16 @@ export function OidcCallbackPage({ kind }: { kind: "signin" | "signout" }) {
         ? control.completeSignIn(callbackUrl.current)
         : control.completeSignOut(callbackUrl.current);
     void complete
-      .then(() => router.replace("/"))
+      .then(() => {
+        window.history.replaceState(null, "", "/");
+        setCompleted(true);
+      })
       .catch(() => {
         setFailed(true);
       });
-  }, [control, kind, router]);
+  }, [control, kind]);
+
+  if (completed) return <HostedWorkspace />;
 
   if (control.mode === "loading") {
     return <p className="text-sm text-muted-foreground">Verifying the identity response…</p>;

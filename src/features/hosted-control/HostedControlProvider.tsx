@@ -36,6 +36,34 @@ type ControlState =
       access: BrowserAccessToken | null;
     };
 
+type RetainedAccess = {
+  binding: string;
+  access: BrowserAccessToken;
+};
+
+// Static callback navigation may remount this provider even though the JavaScript realm remains
+// alive. Retain the token only in module memory, bound to the exact reviewed identity/API tuple.
+// A full reload, new tab, configuration change, expiry, 401, or sign-out clears it.
+let retainedAccess: RetainedAccess | null = null;
+
+function accessBinding(descriptor: ControlBootstrapDescriptor): string {
+  return JSON.stringify([
+    descriptor.issuer,
+    descriptor.public_client_id,
+    descriptor.api_audience,
+    descriptor.api_url,
+  ]);
+}
+
+function activeRetainedAccess(descriptor: ControlBootstrapDescriptor): BrowserAccessToken | null {
+  const binding = accessBinding(descriptor);
+  if (retainedAccess?.binding === binding && retainedAccess.access.expiresAt > Date.now() / 1000) {
+    return retainedAccess.access;
+  }
+  retainedAccess = null;
+  return null;
+}
+
 interface HostedControlContextValue {
   mode: ControlState["mode"];
   authenticated: boolean;
@@ -65,11 +93,16 @@ export function HostedControlProvider({ children }: { children: ReactNode }) {
       .then((discovery: BootstrapDiscovery) => {
         if (!active) return;
         if (discovery.mode === "loopback") {
+          retainedAccess = null;
           setState({ mode: "loopback" });
           return;
         }
         sessionRef.current = createHostedOidcSession(discovery.descriptor, window.sessionStorage);
-        setState({ ...discovery, mode: "hosted", access: null });
+        setState({
+          ...discovery,
+          mode: "hosted",
+          access: activeRetainedAccess(discovery.descriptor),
+        });
       })
       .catch((error: unknown) => {
         if (active) setState({ mode: "error", message: messageFrom(error) });
@@ -81,6 +114,7 @@ export function HostedControlProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearAuthentication = useCallback(async () => {
+    retainedAccess = null;
     await sessionRef.current?.clear();
     setState((current) => (current.mode === "hosted" ? { ...current, access: null } : current));
   }, []);
@@ -109,12 +143,17 @@ export function HostedControlProvider({ children }: { children: ReactNode }) {
   const completeSignIn = useCallback(async (callbackUrl: string) => {
     if (!sessionRef.current) throw new Error("Hosted sign-in is not configured.");
     const access = await sessionRef.current.completeSignIn(callbackUrl);
+    setState((current) => {
+      if (current.mode !== "hosted") return current;
+      retainedAccess = { binding: accessBinding(current.descriptor), access };
+      return { ...current, access };
+    });
     setActionError(null);
-    setState((current) => (current.mode === "hosted" ? { ...current, access } : current));
   }, []);
 
   const signOut = useCallback(async () => {
     if (!sessionRef.current) throw new Error("Hosted sign-out is not configured.");
+    retainedAccess = null;
     setState((current) => (current.mode === "hosted" ? { ...current, access: null } : current));
     setActionError(null);
     try {
@@ -128,6 +167,7 @@ export function HostedControlProvider({ children }: { children: ReactNode }) {
   const completeSignOut = useCallback(async (callbackUrl: string) => {
     if (!sessionRef.current) throw new Error("Hosted sign-out is not configured.");
     await sessionRef.current.completeSignOut(callbackUrl);
+    retainedAccess = null;
     setActionError(null);
     setState((current) => (current.mode === "hosted" ? { ...current, access: null } : current));
   }, []);
