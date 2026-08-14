@@ -1,4 +1,4 @@
-import type { Violation } from "@/lib/pipeline-graph";
+import type { CanvasValidationIssue } from "@/features/pipeline-canvas/validation/attributeViolations";
 
 /**
  * A human label for a field-reference kind, shared by `unknown-field-reference`'s three
@@ -23,8 +23,10 @@ const REFERENCE_KIND_LABEL: Record<
  * `expression`/`constant` payload (DRUFF-15 already guarantees none of those reach a `Violation`
  * object; this function has no other data to draw from).
  */
-export function formatViolationMessage(violation: Violation): string {
+export function formatViolationMessage(violation: CanvasValidationIssue): string {
   switch (violation.kind) {
+    case "dander-validation":
+      return `${violation.message} (${violation.location})`;
     case "duplicate-node-id":
       return `Node id "${violation.nodeId}" is used by more than one node.`;
     case "dangling-edge":

@@ -19,11 +19,15 @@ import {
   type HostedControlFetch,
 } from "@/features/hosted-control/authorized-fetch";
 import {
+  HostedControlApiClient,
+  type HostedCapability,
+} from "@/features/hosted-control/control-api";
+import {
   createHostedOidcSession,
   type BrowserAccessToken,
   type HostedOidcSession,
 } from "@/features/hosted-control/oidc-session";
-import type { ControlBootstrapDescriptor } from "@/lib/dander-contracts";
+import type { CapabilitiesResponse, ControlBootstrapDescriptor } from "@/lib/dander-contracts";
 
 type ControlState =
   | { mode: "loading" }
@@ -39,6 +43,12 @@ type ControlState =
 type RetainedAccess = {
   binding: string;
   access: BrowserAccessToken;
+};
+
+type CapabilityState = {
+  access: BrowserAccessToken;
+  capabilities: CapabilitiesResponse | null;
+  error: string | null;
 };
 
 // Static callback navigation may remount this provider even though the JavaScript realm remains
@@ -69,6 +79,9 @@ interface HostedControlContextValue {
   authenticated: boolean;
   error: string | null;
   descriptor: ControlBootstrapDescriptor | null;
+  capabilities: CapabilitiesResponse | null;
+  capabilityError: string | null;
+  hasCapability(capability: HostedCapability): boolean;
   signIn(): Promise<void>;
   completeSignIn(callbackUrl: string): Promise<void>;
   signOut(): Promise<void>;
@@ -85,6 +98,7 @@ function messageFrom(error: unknown): string {
 export function HostedControlProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ControlState>({ mode: "loading" });
   const [actionError, setActionError] = useState<string | null>(null);
+  const [capabilityState, setCapabilityState] = useState<CapabilityState | null>(null);
   const sessionRef = useRef<HostedOidcSession | null>(null);
 
   useEffect(() => {
@@ -187,11 +201,45 @@ export function HostedControlProvider({ children }: { children: ReactNode }) {
     [clearAuthentication, state],
   );
 
+  const hostedAccess = state.mode === "hosted" ? state.access : null;
+
+  useEffect(() => {
+    if (state.mode !== "hosted" || hostedAccess === null) return;
+    let active = true;
+    void new HostedControlApiClient(request)
+      .capabilities()
+      .then((result) => {
+        if (active) {
+          setCapabilityState({ access: hostedAccess, capabilities: result, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setCapabilityState({
+            access: hostedAccess,
+            capabilities: null,
+            error: messageFrom(error),
+          });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [hostedAccess, request, state.mode]);
+
+  const visibleCapabilityState =
+    hostedAccess !== null && capabilityState?.access === hostedAccess ? capabilityState : null;
+  const capabilities = visibleCapabilityState?.capabilities ?? null;
+  const capabilityError = visibleCapabilityState?.error ?? null;
+
   const value: HostedControlContextValue = {
     mode: state.mode,
     authenticated: state.mode === "hosted" && state.access !== null,
     error: state.mode === "error" ? state.message : actionError,
     descriptor: state.mode === "hosted" ? state.descriptor : null,
+    capabilities,
+    capabilityError,
+    hasCapability: (capability) => capabilities?.operations.includes(capability) ?? false,
     signIn,
     completeSignIn,
     signOut,
@@ -225,6 +273,12 @@ export function HostedControlStatus() {
         Sign in
       </Button>
     );
+  }
+  if (control.capabilityError) {
+    return <span className="text-xs text-destructive">Hosted compatibility blocked</span>;
+  }
+  if (!control.capabilities) {
+    return <span className="text-xs text-muted-foreground">Verifying Dander…</span>;
   }
   return (
     <div className="flex items-center gap-2">
@@ -269,6 +323,27 @@ export function HostedControlGate({ children }: { children: ReactNode }) {
         <Button className="mt-4" onClick={() => void control.signIn().catch(() => undefined)}>
           Sign in
         </Button>
+      </div>
+    );
+  }
+  if (control.mode === "hosted" && control.capabilityError) {
+    return (
+      <div role="alert" className="m-auto max-w-lg p-6 text-sm">
+        <h2 className="font-semibold">Hosted compatibility is safely blocked</h2>
+        <p className="mt-2 text-muted-foreground">{control.capabilityError}</p>
+      </div>
+    );
+  }
+  if (control.mode === "hosted" && !control.capabilities) {
+    return <div className="m-auto text-sm text-muted-foreground">Verifying Dander…</div>;
+  }
+  if (control.mode === "hosted" && !control.hasCapability("graph.read")) {
+    return (
+      <div role="alert" className="m-auto max-w-lg p-6 text-sm">
+        <h2 className="font-semibold">Graph access is unavailable</h2>
+        <p className="mt-2 text-muted-foreground">
+          This hosted identity was not granted Dander&apos;s graph.read capability.
+        </p>
       </div>
     );
   }

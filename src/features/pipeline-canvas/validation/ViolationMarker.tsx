@@ -3,7 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatViolationMessage } from "@/features/pipeline-canvas/validation/formatViolationMessage";
-import type { Violation } from "@/lib/pipeline-graph";
+import type { CanvasValidationIssue } from "@/features/pipeline-canvas/validation/attributeViolations";
 
 /**
  * The shared inline validation badge (DRUFF-16): renders nothing for a clean node/edge, otherwise
@@ -13,7 +13,7 @@ import type { Violation } from "@/lib/pipeline-graph";
  * error log/list/panel anywhere (AC2, "Validation surface" module in
  * `steering/00-project-overview.md`).
  */
-export function ViolationMarker({ violations }: { violations: Violation[] }) {
+export function ViolationMarker({ violations }: { violations: CanvasValidationIssue[] }) {
   if (violations.length === 0) {
     return null;
   }

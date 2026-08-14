@@ -3,6 +3,7 @@ import { canvasToGraph, validateFieldWiring } from "@/lib/pipeline-graph";
 import { useGraphStore } from "@/lib/graph-store";
 import {
   attributeViolations,
+  mergeViolationIndexes,
   type ViolationIndex,
 } from "@/features/pipeline-canvas/validation/attributeViolations";
 
@@ -13,13 +14,14 @@ import {
  * node, edge, field, mapping, or join re-runs validation on the next render (AC1) — this hook adds
  * no state of its own, it's a pure derivation of the current canvas graph.
  */
-export function useGraphViolations(): ViolationIndex {
+export function useGraphViolations(remote?: ViolationIndex): ViolationIndex {
   const nodes = useGraphStore((state) => state.nodes);
   const edges = useGraphStore((state) => state.edges);
 
   return useMemo(() => {
     const graph = canvasToGraph(nodes, edges);
     const violations = validateFieldWiring(graph);
-    return attributeViolations(violations, edges);
-  }, [nodes, edges]);
+    const local = attributeViolations(violations, edges);
+    return remote ? mergeViolationIndexes(local, remote) : local;
+  }, [nodes, edges, remote]);
 }

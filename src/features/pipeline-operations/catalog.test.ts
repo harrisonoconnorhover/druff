@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   DanderApiOperationCatalogDiscovery,
+  HostedOperationCatalogDiscovery,
   OperationCatalogDiscoveryError,
 } from "@/features/pipeline-operations/catalog";
 
@@ -54,5 +55,17 @@ describe("DanderApiOperationCatalogDiscovery", () => {
     await expect(
       new DanderApiOperationCatalogDiscovery("http://dander.test", fetchCatalog).load(),
     ).rejects.toThrow(OperationCatalogDiscoveryError);
+  });
+
+  it("loads operations through the authenticated hosted request", async () => {
+    const request = vi.fn(async () => Response.json(CATALOG));
+
+    await expect(new HostedOperationCatalogDiscovery(request).load()).resolves.toEqual(
+      CATALOG.operations,
+    );
+    expect(request).toHaveBeenCalledWith("/v1/operations", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
   });
 });

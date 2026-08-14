@@ -1,5 +1,15 @@
 import type { Edge } from "@xyflow/react";
 import type { EdgeRef, PipelineEdgeData, Violation } from "@/lib/pipeline-graph";
+import type { GraphValidationResponse } from "@/lib/dander-contracts";
+
+export type RemoteValidationIssue = {
+  kind: "dander-validation";
+  location: string;
+  message: string;
+  issueType: string;
+};
+
+export type CanvasValidationIssue = Violation | RemoteValidationIssue;
 
 /**
  * Per-canvas-element violation buckets (DRUFF-16). Keys are canvas node ids / canvas edge ids; an
@@ -7,8 +17,13 @@ import type { EdgeRef, PipelineEdgeData, Violation } from "@/lib/pipeline-graph"
  * and every node/edge renders with no marker (AC5).
  */
 export type ViolationIndex = {
-  byNodeId: Record<string, Violation[]>;
-  byEdgeId: Record<string, Violation[]>;
+  byNodeId: Record<string, CanvasValidationIssue[]>;
+  byEdgeId: Record<string, CanvasValidationIssue[]>;
+};
+
+export type AttributedRemoteValidation = {
+  index: ViolationIndex;
+  general: RemoteValidationIssue[];
 };
 
 /** Which canvas node ids and canvas edges a single violation references. */
@@ -118,4 +133,53 @@ export function attributeViolations(
   }
 
   return { byNodeId, byEdgeId };
+}
+
+/** Best-effort projection of Dander's stable `nodes.<index>` / `edges.<index>` locations. */
+export function attributeRemoteValidationIssues(
+  issues: NonNullable<GraphValidationResponse["issues"]>,
+  nodes: ReadonlyArray<{ id: string }>,
+  edges: ReadonlyArray<{ id: string }>,
+): AttributedRemoteValidation {
+  const index: ViolationIndex = { byNodeId: {}, byEdgeId: {} };
+  const general: RemoteValidationIssue[] = [];
+
+  for (const issue of issues) {
+    const remote: RemoteValidationIssue = {
+      kind: "dander-validation",
+      location: issue.location,
+      message: issue.message,
+      issueType: issue.type,
+    };
+    const match = /^(nodes|edges)\.(\d+)(?:\.|$)/.exec(issue.location);
+    const position = match ? Number(match[2]) : Number.NaN;
+    if (match?.[1] === "nodes" && nodes[position]) {
+      (index.byNodeId[nodes[position].id] ??= []).push(remote);
+    } else if (match?.[1] === "edges" && edges[position]) {
+      (index.byEdgeId[edges[position].id] ??= []).push(remote);
+    } else {
+      general.push(remote);
+    }
+  }
+  return { index, general };
+}
+
+export function mergeViolationIndexes(
+  local: ViolationIndex,
+  remote: ViolationIndex,
+): ViolationIndex {
+  const merge = (
+    left: Record<string, CanvasValidationIssue[]>,
+    right: Record<string, CanvasValidationIssue[]>,
+  ): Record<string, CanvasValidationIssue[]> => {
+    const result: Record<string, CanvasValidationIssue[]> = { ...left };
+    for (const [id, issues] of Object.entries(right)) {
+      result[id] = [...(result[id] ?? []), ...issues];
+    }
+    return result;
+  };
+  return {
+    byNodeId: merge(local.byNodeId, remote.byNodeId),
+    byEdgeId: merge(local.byEdgeId, remote.byEdgeId),
+  };
 }

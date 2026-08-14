@@ -40,6 +40,7 @@ type DurableControlState = {
   revision: number;
   loseNextCreate: boolean;
   loseNextDelete: boolean;
+  previewCalls: number;
 };
 
 function graphDocument(name: string, nodeName: string) {
@@ -236,6 +237,86 @@ function createControlService(durable: DurableControlState) {
       await json(route, 401, errorEnvelope("authentication_required", "Sign in again."));
       return;
     }
+    if (url.pathname === "/v1/capabilities" && request.method() === "GET") {
+      await json(route, 200, {
+        api_version: "v1",
+        dander_version: "0.9.0rc19",
+        contract: { id: DANDER_CONTRACT_BUNDLE_ID, sha256: DANDER_CONTRACT_BUNDLE_SHA256 },
+        compatibility: { minimum_druff_contract: "1.0.0", maximum_druff_contract: "1.x" },
+        limits: { max_graph_bytes: 5_242_880, max_log_records: 500, max_page_size: 100 },
+        operations: [
+          "graph.read",
+          "graph.edit",
+          "graph.delete",
+          "graph.validate",
+          "deployment.preview",
+        ],
+      });
+      return;
+    }
+    if (url.pathname === "/v1/connectors" && request.method() === "GET") {
+      await json(route, 200, {
+        connectors: [
+          {
+            id: "records",
+            display_name: "Records API",
+            engine: "records",
+            description: "Synthetic installed connector.",
+            plugin: { id: "records", distribution: "dander-connector-records", version: "1.0.0" },
+            endpoints: [
+              {
+                id: "records",
+                display_name: "Records",
+                graph_binding: { connector: "records", endpoint: "records" },
+                fields: [{ name: "id", display_name: "ID", data_type: "STRING", required: true }],
+              },
+            ],
+          },
+        ],
+      });
+      return;
+    }
+    if (url.pathname === "/v1/plugin-catalog" && request.method() === "GET") {
+      await json(route, 200, {
+        schema_version: 1,
+        dander_version: "0.9.0rc19",
+        connectors: [
+          {
+            id: "records",
+            display_name: "Records API",
+            description: "Synthetic curated connector.",
+            distribution: "dander-connector-records",
+            version: "1.0.0",
+            dander_specifier: ">=0.9,<1",
+            compatible: true,
+            support_status: "experimental",
+            validation_status: "synthetic",
+            documentation_url: "https://example.test/records/docs",
+            pypi_url: "https://example.test/records/pypi",
+            repository_url: "https://example.test/records/repository",
+            installed: true,
+            installed_version: "1.0.0",
+          },
+        ],
+      });
+      return;
+    }
+    if (url.pathname === "/v1/operations" && request.method() === "GET") {
+      await json(route, 200, {
+        schema_version: 1,
+        operations: [
+          {
+            kind: "trim_whitespace",
+            display_name: "Trim whitespace",
+            description: "Remove surrounding whitespace.",
+            parameters: [
+              { name: "field", display_name: "Field", control: "field", required: true },
+            ],
+          },
+        ],
+      });
+      return;
+    }
     if (url.pathname === "/v1/projects" && request.method() === "GET") {
       await json(route, 200, { projects: [{ id: PROJECT }] });
       return;
@@ -282,6 +363,57 @@ function createControlService(durable: DurableControlState) {
         return;
       }
       await json(route, 201, resource(created), { ETag: created.revision });
+      return;
+    }
+
+    const operationMatch =
+      /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/(validate|deployment-preview)$/.exec(
+        url.pathname,
+      );
+    if (operationMatch && request.method() === "POST") {
+      const graph = decodeURIComponent(operationMatch[1]!);
+      const operation = operationMatch[2]!;
+      const current = durable.records.get(graph);
+      if (!current || request.headers()["if-match"] !== current.revision) {
+        await json(
+          route,
+          412,
+          errorEnvelope("operation_conflict", "The graph revision no longer matches."),
+        );
+        return;
+      }
+      if (operation === "validate") {
+        await json(route, 200, {
+          valid: false,
+          graph_name: current.document.name,
+          content_sha256: current.contentSha,
+          issues: [
+            {
+              location: "nodes.0.config",
+              message: "Remote node config is invalid.",
+              type: "value_error",
+            },
+          ],
+        });
+        return;
+      }
+      durable.previewCalls += 1;
+      if (durable.previewCalls > 1) {
+        await json(
+          route,
+          501,
+          errorEnvelope("operation_unavailable", "Preview is unavailable for this profile."),
+        );
+        return;
+      }
+      await json(route, 200, {
+        revision: "provider/native-preview-revision",
+        candidate_image: `registry.example.test/dander@sha256:${"a".repeat(64)}`,
+        plan_sha256: "b".repeat(64),
+        plan_summary: "Plan: 1 to add, 0 to change, 0 to destroy.",
+        plan_text: "Synthetic bounded deployment plan.",
+        affected_jobs: ["records"],
+      });
       return;
     }
 
@@ -444,6 +576,7 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     revision: 0,
     loseNextCreate: false,
     loseNextDelete: false,
+    previewCalls: 0,
   };
   const alpha = nextRecord(durable, "alpha-graph", graphDocument("alpha-pipeline", "Source"));
   const beta = nextRecord(durable, "beta-graph", graphDocument("beta-pipeline", "Beta source"));
@@ -469,7 +602,44 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     .getByRole("button", { name: "Open" })
     .click();
 
-  const source = page.locator(".react-flow__node", { hasText: "Source" });
+  await page.getByText("Inspect catalogs and capabilities").click();
+  await expect(page.getByText(/Dander 0\.9\.0rc19 · API v1/)).toBeVisible();
+  await expect(page.getByText(/Installed connectors:.*Records API/)).toBeVisible();
+  await expect(page.getByText(/Curated plugins:.*Records API/)).toBeVisible();
+  await expect(page.getByText(/Graph operations:.*Trim whitespace/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Validate graph" }).click();
+  const remoteMarker = page.getByRole("button", { name: "1 validation issue" });
+  await expect(remoteMarker).toBeVisible();
+  await remoteMarker.hover();
+  await expect(page.getByText(/Remote node config is invalid/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Preview deployment" }).click();
+  await expect(page.getByText("Bounded deployment preview")).toBeVisible();
+  await expect(page.getByText(/Affected resources: records/)).toBeVisible();
+  await page.getByText("Review bounded plan text").click();
+  await expect(page.getByText("Synthetic bounded deployment plan.")).toBeVisible();
+  await page.getByRole("button", { name: "Preview deployment" }).click();
+  await expect(
+    page.getByText("Preview is unavailable for this profile. Correlation ID: e2e-correlation."),
+  ).toBeVisible();
+
+  const operationConflictRecord = durable.records.get("alpha-graph")!;
+  durable.records.set(
+    "alpha-graph",
+    nextRecord(
+      durable,
+      "alpha-graph",
+      graphDocument("alpha-pipeline", "Server edit"),
+      operationConflictRecord.createdAt,
+    ),
+  );
+  await page.getByRole("button", { name: "Validate graph" }).click();
+  await expect(page.getByText(/Reload the hosted graph before retrying/i)).toBeVisible();
+  await page.getByRole("button", { name: "Reload hosted version" }).click();
+  await expect(page.locator(".react-flow__node", { hasText: "Server edit" })).toBeVisible();
+
+  const source = page.locator(".react-flow__node", { hasText: "Server edit" });
   await source.click();
   await page.getByLabel("Name", { exact: true }).fill("Client edit");
   await page.getByRole("button", { name: "Save hosted graph" }).click();

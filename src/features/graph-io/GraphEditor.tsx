@@ -8,6 +8,12 @@ import { GraphOperationsBar } from "@/features/graph-operations/GraphOperationsB
 import { useGraphOperations } from "@/features/graph-operations/useGraphOperations";
 import { PipelineCanvas } from "@/features/pipeline-canvas/PipelineCanvas";
 import { useHostedControl } from "@/features/hosted-control/HostedControlProvider";
+import { HostedControlApiClient } from "@/features/hosted-control/control-api";
+import { HostedValidationPreviewBar } from "@/features/hosted-control/HostedValidationPreviewBar";
+import { useHostedValidationPreview } from "@/features/hosted-control/useHostedValidationPreview";
+import { HostedConnectorDiscovery } from "@/features/connector-library/discovery";
+import { HostedPluginCatalogDiscovery } from "@/features/connector-library/catalog";
+import { HostedOperationCatalogDiscovery } from "@/features/pipeline-operations/catalog";
 import { HostedGraphPersistence } from "@/lib/persistence/graph-persistence";
 
 /**
@@ -23,24 +29,57 @@ export function GraphEditor() {
     () => (control.mode === "hosted" ? new HostedGraphPersistence(control.request) : null),
     [control.mode, control.request],
   );
-  const persistence = useGraphPersistence(
-    hostedPersistence === null ? {} : { persistence: hostedPersistence },
+  const hostedDiscoveries = useMemo(
+    () =>
+      control.mode === "hosted"
+        ? {
+            connectorDiscovery: new HostedConnectorDiscovery(control.request),
+            pluginCatalogDiscovery: new HostedPluginCatalogDiscovery(control.request),
+            operationCatalogDiscovery: new HostedOperationCatalogDiscovery(control.request),
+          }
+        : null,
+    [control.mode, control.request],
   );
+  const hostedControlApi = useMemo(
+    () => (control.mode === "hosted" ? new HostedControlApiClient(control.request) : null),
+    [control.mode, control.request],
+  );
+  const persistence = useGraphPersistence(
+    hostedPersistence === null ? {} : { persistence: hostedPersistence, ...hostedDiscoveries! },
+  );
+  const hostedOperations = useHostedValidationPreview({
+    client: hostedControlApi,
+    capabilities: control.capabilities,
+    address: persistence.address,
+    revision: persistence.revision,
+    contentSha256: persistence.contentSha256,
+    graphIsClean: persistence.status === "clean",
+  });
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
-      <GraphToolbar viewMode={viewMode} onViewModeChange={setViewMode} persistence={persistence} />
-      {control.mode === "hosted" ? (
-        <div className="border-b bg-blue-50 px-4 py-2 text-xs text-blue-950 dark:bg-blue-950/30 dark:text-blue-100">
-          Hosted canonical graph editing. Validation, catalogs, deployment previews, and run
-          controls arrive in the next focused steps; this view never contacts a loopback Dander
-          service.
-        </div>
+      <GraphToolbar
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        persistence={persistence}
+        canEditHosted={control.hasCapability("graph.edit")}
+        canDeleteHosted={control.hasCapability("graph.delete")}
+      />
+      {control.mode === "hosted" && control.capabilities ? (
+        <HostedValidationPreviewBar
+          capabilities={control.capabilities}
+          operations={hostedOperations}
+          onReload={persistence.reload}
+        />
       ) : (
         <LoopbackOperations persistence={persistence} />
       )}
       <div className="min-h-0 flex-1">
-        {viewMode === "canvas" ? <PipelineCanvas /> : <SourceView />}
+        {viewMode === "canvas" ? (
+          <PipelineCanvas remoteViolations={hostedOperations.remoteViolations} />
+        ) : (
+          <SourceView />
+        )}
       </div>
     </div>
   );

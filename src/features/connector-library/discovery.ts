@@ -4,6 +4,7 @@ import {
 } from "@/features/connector-library/descriptors/types";
 import { ConnectorCatalogResponseSchema, type InstalledConnector } from "@/lib/dander-contracts";
 import { localNetworkRequest } from "@/lib/local-network-request";
+import type { HostedControlFetch } from "@/features/hosted-control/authorized-fetch";
 
 export interface ConnectorDiscovery {
   load(): Promise<ConnectorDescriptor[]>;
@@ -47,14 +48,36 @@ export class DanderApiConnectorDiscovery implements ConnectorDiscovery {
         `Dander connector discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = ConnectorCatalogResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
+    return parseConnectorCatalog(await response.json());
+  }
+}
+
+/** Authenticated hosted adapter for the same provider-neutral generated connector DTO. */
+export class HostedConnectorDiscovery implements ConnectorDiscovery {
+  constructor(private readonly request: HostedControlFetch) {}
+
+  async load(): Promise<ConnectorDescriptor[]> {
+    const response = await this.request("/v1/connectors", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (response.status !== 200) {
       throw new ConnectorDiscoveryError(
-        "Dander returned connector metadata this Druff version cannot safely use.",
+        `Hosted Dander connector discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    return (parsed.data.connectors ?? []).flatMap(projectConnector);
+    return parseConnectorCatalog(await response.json());
   }
+}
+
+function parseConnectorCatalog(input: unknown): ConnectorDescriptor[] {
+  const parsed = ConnectorCatalogResponseSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new ConnectorDiscoveryError(
+      "Dander returned connector metadata this Druff version cannot safely use.",
+    );
+  }
+  return (parsed.data.connectors ?? []).flatMap(projectConnector);
 }
 
 function projectConnector(connector: InstalledConnector): ConnectorDescriptor[] {
