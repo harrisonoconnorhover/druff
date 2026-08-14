@@ -21,12 +21,28 @@ export type RunId = string;
 export type Stage = string | null;
 export type StartedAt = string | null;
 /**
- * This interface was referenced by `RunStatusResponse`'s JSON-Schema
+ * This interface was referenced by `RunPageResponse`'s JSON-Schema
  * via the `definition` "RunState".
  */
 export type RunState =
   "queued" | "running" | "succeeded" | "failed" | "canceling" | "canceled" | "retrying";
+/**
+ * @maxItems 100
+ */
+export type Items = RunStatusResponse[];
+export type NextCursor = string | null;
 
+/**
+ * A bounded page of normalized, non-sensitive run summaries.
+ */
+export interface RunPageResponse {
+  items: Items;
+  next_cursor?: NextCursor;
+}
+/**
+ * This interface was referenced by `RunPageResponse`'s JSON-Schema
+ * via the `definition` "RunStatusResponse".
+ */
 export interface RunStatusResponse {
   affected?: Affected;
   assertions?: Assertions;

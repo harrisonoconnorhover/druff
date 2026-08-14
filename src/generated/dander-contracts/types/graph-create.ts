@@ -13,7 +13,7 @@ export type Keys = [JoinKeyPairDocument, ...JoinKeyPairDocument[]];
 export type Left = string;
 export type Right = string;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "JsonValue".
  */
 export type JsonValue = unknown | undefined;
@@ -21,7 +21,7 @@ export type Type = "inner" | "left" | "right" | "full";
 export type Source = string | null;
 export type Target = string;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TransformationDocument".
  */
 export type TransformationDocument =
@@ -53,7 +53,7 @@ export type To = string;
 export type Edges = EdgeDocument[];
 export type Name = string;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "GraphNodeDocument".
  */
 export type GraphNodeDocument =
@@ -89,7 +89,7 @@ export type Extensions = ProviderExtension[];
 export type Name2 = string;
 export type Nullable = boolean;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "FieldTestDocument".
  */
 export type FieldTestDocument =
@@ -128,7 +128,7 @@ export type Fields = NodeFieldDocument[];
 export type Id = string;
 export type Name3 = string;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TriggerDocument".
  */
 export type TriggerDocument = ScheduleTrigger | DependencyTrigger | ManualTrigger;
@@ -169,12 +169,12 @@ export type RightInput = string;
 /**
  * BigQuery join kinds supported by an executable transform node.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ExecutableJoinType".
  */
 export type ExecutableJoinType = "inner" | "left" | "right" | "full";
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "OperationDocument".
  */
 export type OperationDocument =
@@ -196,7 +196,7 @@ export type Field8 = string;
 /**
  * Closed comparison grammar for ``filter_rows``.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ComparisonOperator".
  */
 export type ComparisonOperator =
@@ -248,7 +248,7 @@ export type Transport = "load_job" | "storage_write" | "copy";
 /**
  * Supported load strategies.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "WriteMode".
  */
 export type WriteMode = "scd1" | "scd2" | "snapshot" | "incremental" | "replace";
@@ -260,11 +260,12 @@ export type Fields3 = NodeFieldDocument[];
 export type Id3 = string;
 export type Name6 = string;
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ExtensionNodeType".
  */
 export type ExtensionNodeType = string;
 export type Nodes = GraphNodeDocument[];
+export type Graph = string;
 /**
  * The closed set of HTTP methods a `RequestSpec` may declare.
  *
@@ -281,14 +282,14 @@ export type Nodes = GraphNodeDocument[];
  *     PATCH: Partially update a resource.
  *     DELETE: Remove a resource.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "HttpMethod".
  */
 export type HttpMethod1 = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 /**
  * How a filter's flat condition list combines.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "MatchLogic".
  */
 export type MatchLogic1 = "all" | "any";
@@ -307,20 +308,30 @@ export type MatchLogic1 = "all" | "any";
  *     MONTH: Monthly partitions.
  *     YEAR: Yearly partitions.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "PartitioningType".
  */
 export type PartitioningType1 = "hour" | "day" | "month" | "year";
 /**
  * How a writer handles declared columns absent from an existing target.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "SchemaEvolution".
  */
 export type SchemaEvolution1 = "strict" | "additive";
 
 /**
+ * Create one named graph through the hosted project collection route.
+ */
+export interface GraphCreateRequest {
+  document: PipelineGraphDocument;
+  graph: Graph;
+}
+/**
  * Canonical graph transport whose construction reuses Dander semantic validation.
+ *
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
+ * via the `definition` "PipelineGraphDocument".
  */
 export interface PipelineGraphDocument {
   edges?: Edges;
@@ -329,7 +340,7 @@ export interface PipelineGraphDocument {
   trigger?: TriggerDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "EdgeDocument".
  */
 export interface EdgeDocument {
@@ -340,7 +351,7 @@ export interface EdgeDocument {
   to: To;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "JoinDocument".
  */
 export interface JoinDocument {
@@ -349,7 +360,7 @@ export interface JoinDocument {
   type: Type;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "JoinKeyPairDocument".
  */
 export interface JoinKeyPairDocument {
@@ -357,14 +368,14 @@ export interface JoinKeyPairDocument {
   right: Right;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "JsonObject".
  */
 export interface JsonObject {
   [k: string]: JsonValue | undefined;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "FieldMappingDocument".
  */
 export interface FieldMappingDocument {
@@ -374,7 +385,7 @@ export interface FieldMappingDocument {
   transformation?: TransformationDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "DirectTransformation".
  */
 export interface DirectTransformation {
@@ -389,12 +400,12 @@ export interface DirectTransformation {
 /**
  * A JSON object that must contain no properties.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "EmptyObject".
  */
 export interface EmptyObject {}
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ExpressionTransformation".
  */
 export interface ExpressionTransformation {
@@ -407,7 +418,7 @@ export interface ExpressionTransformation {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ConstantTransformation".
  */
 export interface ConstantTransformation {
@@ -420,7 +431,7 @@ export interface ConstantTransformation {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "CustomCodeTransformation".
  */
 export interface CustomCodeTransformation {
@@ -433,7 +444,7 @@ export interface CustomCodeTransformation {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "SourceNodeDocument".
  */
 export interface SourceNodeDocument {
@@ -451,7 +462,7 @@ export interface SourceNodeDocument {
   visual?: NodeVisualDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "SourceNodeConfigDocument".
  */
 export interface SourceNodeConfigDocument {
@@ -461,7 +472,7 @@ export interface SourceNodeConfigDocument {
   [k: string]: JsonValue | undefined;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "RequestSpecDocument".
  */
 export interface RequestSpecDocument {
@@ -477,7 +488,7 @@ export interface QueryParams {
   [k: string]: string | undefined;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "CursorStrategyDocument".
  */
 export interface CursorStrategyDocument {
@@ -487,7 +498,7 @@ export interface CursorStrategyDocument {
   params?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "NodeFieldDocument".
  */
 export interface NodeFieldDocument {
@@ -503,7 +514,7 @@ export interface NodeFieldDocument {
 /**
  * One deterministic provider-specific schema annotation, never a credential.
  *
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ProviderExtension".
  */
 export interface ProviderExtension {
@@ -512,7 +523,7 @@ export interface ProviderExtension {
   value: Value;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "NotNullFieldTest".
  */
 export interface NotNullFieldTest {
@@ -523,7 +534,7 @@ export interface NotNullFieldTest {
   values?: Values;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "UniqueFieldTest".
  */
 export interface UniqueFieldTest {
@@ -534,7 +545,7 @@ export interface UniqueFieldTest {
   values?: Values1;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "AcceptedValuesFieldTest".
  */
 export interface AcceptedValuesFieldTest {
@@ -545,7 +556,7 @@ export interface AcceptedValuesFieldTest {
   values: Values2;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "RelationshipsFieldTest".
  */
 export interface RelationshipsFieldTest {
@@ -556,7 +567,7 @@ export interface RelationshipsFieldTest {
   values?: Values3;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ScheduleTrigger".
  */
 export interface ScheduleTrigger {
@@ -567,7 +578,7 @@ export interface ScheduleTrigger {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "DependencyTrigger".
  */
 export interface DependencyTrigger {
@@ -578,7 +589,7 @@ export interface DependencyTrigger {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ManualTrigger".
  */
 export interface ManualTrigger {
@@ -589,7 +600,7 @@ export interface ManualTrigger {
   metadata?: JsonObject;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "NodeVisualDocument".
  */
 export interface NodeVisualDocument {
@@ -598,7 +609,7 @@ export interface NodeVisualDocument {
   position?: PositionDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "PositionDocument".
  */
 export interface PositionDocument {
@@ -606,7 +617,7 @@ export interface PositionDocument {
   y: Y;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TransformNodeDocument".
  */
 export interface TransformNodeDocument {
@@ -624,7 +635,7 @@ export interface TransformNodeDocument {
   visual?: NodeVisualDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TransformNodeConfigDocument".
  */
 export interface TransformNodeConfigDocument {
@@ -633,7 +644,7 @@ export interface TransformNodeConfigDocument {
   [k: string]: JsonValue | undefined;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TransformJoinDocument".
  */
 export interface TransformJoinDocument {
@@ -643,7 +654,7 @@ export interface TransformJoinDocument {
   type: ExecutableJoinType;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ExecutableJoinKeyDocument".
  */
 export interface ExecutableJoinKeyDocument {
@@ -651,7 +662,7 @@ export interface ExecutableJoinKeyDocument {
   right: Right1;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TruncateStringOperation".
  */
 export interface TruncateStringOperation {
@@ -660,7 +671,7 @@ export interface TruncateStringOperation {
   params: TruncateStringParamsDocument;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TruncateStringParamsDocument".
  */
 export interface TruncateStringParamsDocument {
@@ -668,7 +679,7 @@ export interface TruncateStringParamsDocument {
   max_length: MaxLength;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TrimWhitespaceOperation".
  */
 export interface TrimWhitespaceOperation {
@@ -677,14 +688,14 @@ export interface TrimWhitespaceOperation {
   params: TrimWhitespaceParamsDocument;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TrimWhitespaceParamsDocument".
  */
 export interface TrimWhitespaceParamsDocument {
   field: Field6;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "DefaultValueOperation".
  */
 export interface DefaultValueOperation {
@@ -693,7 +704,7 @@ export interface DefaultValueOperation {
   params: DefaultValueParamsDocument;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "DefaultValueParamsDocument".
  */
 export interface DefaultValueParamsDocument {
@@ -701,7 +712,7 @@ export interface DefaultValueParamsDocument {
   field: Field7;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "FilterRowsOperation".
  */
 export interface FilterRowsOperation {
@@ -710,7 +721,7 @@ export interface FilterRowsOperation {
   params: FilterRowsParamsDocument;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "FilterRowsParamsDocument".
  */
 export interface FilterRowsParamsDocument {
@@ -718,7 +729,7 @@ export interface FilterRowsParamsDocument {
   logic?: MatchLogic;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "FieldConditionDocument".
  */
 export interface FieldConditionDocument {
@@ -727,7 +738,7 @@ export interface FieldConditionDocument {
   value?: Value1;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TargetNodeDocument".
  */
 export interface TargetNodeDocument {
@@ -745,7 +756,7 @@ export interface TargetNodeDocument {
   visual?: NodeVisualDocument | null;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "TargetNodeConfigDocument".
  */
 export interface TargetNodeConfigDocument {
@@ -753,7 +764,7 @@ export interface TargetNodeConfigDocument {
   [k: string]: JsonValue | undefined;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "WriterDocument".
  */
 export interface WriterDocument {
@@ -767,7 +778,7 @@ export interface WriterDocument {
   write_mode: WriteMode;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "DestinationDocument".
  */
 export interface DestinationDocument {
@@ -777,7 +788,7 @@ export interface DestinationDocument {
   table: Table;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "PartitioningDocument".
  */
 export interface PartitioningDocument {
@@ -786,7 +797,7 @@ export interface PartitioningDocument {
   require_partition_filter?: RequirePartitionFilter;
 }
 /**
- * This interface was referenced by `PipelineGraphDocument`'s JSON-Schema
+ * This interface was referenced by `GraphCreateRequest`'s JSON-Schema
  * via the `definition` "ExtensionNodeDocument".
  */
 export interface ExtensionNodeDocument {

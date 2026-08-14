@@ -4,11 +4,15 @@ import {
   validateApiError,
   validateCapabilities,
   validateConnectorCatalog,
+  validateControlBootstrap,
   validateCursorStrategy,
   validateDeploymentPreview,
   validateDestination,
   validateFieldMapping,
   validateFieldTest,
+  validateGraphCreate,
+  validateGraphPage,
+  validateGraphResource,
   validateGraphValidation,
   validateJoin,
   validateJoinKeyPair,
@@ -23,6 +27,8 @@ import {
   validatePipelineNode,
   validatePluginCatalog,
   validatePosition,
+  validateProjectList,
+  validateRunPage,
   validateRunRequest,
   validateRunStatus,
   validateTransformation,
@@ -83,9 +89,22 @@ export const ConnectorCatalogResponseSchema = generatedContractSchema(
   "connector catalog",
   validateConnectorCatalog,
 );
+export const ControlBootstrapDescriptorSchema = generatedContractSchema(
+  "Control bootstrap descriptor",
+  validateControlBootstrap,
+);
 export const DeploymentPreviewResponseSchema = generatedContractSchema(
   "deployment preview",
   validateDeploymentPreview,
+);
+export const GraphCreateRequestSchema = generatedContractSchema(
+  "graph create request",
+  validateGraphCreate,
+);
+export const GraphPageResponseSchema = generatedContractSchema("graph page", validateGraphPage);
+export const GraphResourceResponseSchema = generatedContractSchema(
+  "graph resource",
+  validateGraphResource,
 );
 export const GraphValidationResponseSchema = generatedContractSchema(
   "graph validation",
@@ -108,6 +127,11 @@ export const PluginCatalogResponseSchema = generatedContractSchema(
   "plugin catalog",
   validatePluginCatalog,
 );
+export const ProjectListResponseSchema = generatedContractSchema(
+  "project list",
+  validateProjectList,
+);
+export const RunPageResponseSchema = generatedContractSchema("run page", validateRunPage);
 export const RunRequestSchema = generatedContractSchema("run request", validateRunRequest);
 export const RunStatusResponseSchema = generatedContractSchema("run status", validateRunStatus);
 

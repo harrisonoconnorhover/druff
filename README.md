@@ -58,7 +58,7 @@ pnpm dev              # http://localhost:3000
 ```
 
 Contract output is generated only from the pinned public
-`dander-platform==0.9.0rc18` wheel on PyPI. The generator verifies the wheel, manifest, every file,
+`dander-platform==0.9.0rc19` wheel on PyPI. The generator verifies the wheel, manifest, every file,
 and the whole bundle before writing output; it never reads a sibling Dander checkout.
 
 ```bash

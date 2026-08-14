@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import apiErrorFixture from "@/generated/dander-contracts/bundle/fixtures/api-error.json";
 import capabilitiesFixture from "@/generated/dander-contracts/bundle/fixtures/capabilities.json";
 import connectorCatalogFixture from "@/generated/dander-contracts/bundle/fixtures/connector-catalog.json";
+import controlBootstrapFixture from "@/generated/dander-contracts/bundle/fixtures/control-bootstrap.json";
 import deploymentPreviewFixture from "@/generated/dander-contracts/bundle/fixtures/deployment-preview.json";
+import graphCreateFixture from "@/generated/dander-contracts/bundle/fixtures/graph-create.json";
+import graphPageFixture from "@/generated/dander-contracts/bundle/fixtures/graph-page.json";
+import graphResourceFixture from "@/generated/dander-contracts/bundle/fixtures/graph-resource.json";
 import graphValidationFixture from "@/generated/dander-contracts/bundle/fixtures/graph-validation.json";
 import logPageFixture from "@/generated/dander-contracts/bundle/fixtures/log-page.json";
 import mutationResultFixture from "@/generated/dander-contracts/bundle/fixtures/mutation-result.json";
@@ -10,14 +14,20 @@ import operationCatalogFixture from "@/generated/dander-contracts/bundle/fixture
 import pipelineGraphAliasFixture from "@/generated/dander-contracts/bundle/fixtures/pipeline-graph-alias-input.json";
 import pipelineGraphFixture from "@/generated/dander-contracts/bundle/fixtures/pipeline-graph.json";
 import pluginCatalogFixture from "@/generated/dander-contracts/bundle/fixtures/plugin-catalog.json";
+import projectListFixture from "@/generated/dander-contracts/bundle/fixtures/project-list.json";
+import runPageFixture from "@/generated/dander-contracts/bundle/fixtures/run-page.json";
 import runRequestFixture from "@/generated/dander-contracts/bundle/fixtures/run-request.json";
 import runStatusFixture from "@/generated/dander-contracts/bundle/fixtures/run-status.json";
 import {
   ApiErrorEnvelopeSchema,
   CapabilitiesResponseSchema,
   ConnectorCatalogResponseSchema,
+  ControlBootstrapDescriptorSchema,
   DeploymentPreviewResponseSchema,
   DANDER_CONTRACT_BUNDLE_SHA256,
+  GraphCreateRequestSchema,
+  GraphPageResponseSchema,
+  GraphResourceResponseSchema,
   GraphValidationResponseSchema,
   IncompatibleDanderContractError,
   LogPageResponseSchema,
@@ -25,6 +35,8 @@ import {
   OperationCatalogResponseSchema,
   PipelineGraphDocumentSchema,
   PluginCatalogResponseSchema,
+  ProjectListResponseSchema,
+  RunPageResponseSchema,
   RunRequestSchema,
   RunStatusResponseSchema,
   assertCompatibleCapabilities,
@@ -36,13 +48,19 @@ const rootFixtures: [string, { parse(value: unknown): unknown }, unknown][] = [
   ["api error", ApiErrorEnvelopeSchema, apiErrorFixture],
   ["capabilities", CapabilitiesResponseSchema, capabilitiesFixture],
   ["connector catalog", ConnectorCatalogResponseSchema, connectorCatalogFixture],
+  ["Control bootstrap", ControlBootstrapDescriptorSchema, controlBootstrapFixture],
   ["deployment preview", DeploymentPreviewResponseSchema, deploymentPreviewFixture],
+  ["graph create", GraphCreateRequestSchema, graphCreateFixture],
+  ["graph page", GraphPageResponseSchema, graphPageFixture],
+  ["graph resource", GraphResourceResponseSchema, graphResourceFixture],
   ["graph validation", GraphValidationResponseSchema, graphValidationFixture],
   ["bounded log page", LogPageResponseSchema, logPageFixture],
   ["mutation result", MutationResultSchema, mutationResultFixture],
   ["operation catalog", OperationCatalogResponseSchema, operationCatalogFixture],
   ["pipeline graph", PipelineGraphDocumentSchema, pipelineGraphFixture],
   ["plugin catalog", PluginCatalogResponseSchema, pluginCatalogFixture],
+  ["project list", ProjectListResponseSchema, projectListFixture],
+  ["run page", RunPageResponseSchema, runPageFixture],
   ["run request", RunRequestSchema, runRequestFixture],
   ["run status", RunStatusResponseSchema, runStatusFixture],
 ];

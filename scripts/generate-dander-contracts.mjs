@@ -12,11 +12,11 @@ import { compile } from "json-schema-to-typescript";
 import { format, resolveConfig } from "prettier";
 
 const DANDER_PACKAGE = "dander-platform";
-const DANDER_VERSION = "0.9.0rc18";
-const WHEEL_FILENAME = "dander_platform-0.9.0rc18-py3-none-any.whl";
-const WHEEL_SHA256 = "4500b32451c02b6331a337b6d38eb96cc49a29838b6e3ea5a2b87b9daf85406c";
+const DANDER_VERSION = "0.9.0rc19";
+const WHEEL_FILENAME = "dander_platform-0.9.0rc19-py3-none-any.whl";
+const WHEEL_SHA256 = "8f1336786e46471a2048d6250008ad176ff3b62d047020872659304c7d2db552";
 const BUNDLE_ID = "io.dander.control.contracts/v1";
-const BUNDLE_SHA256 = "344ef5ff2d685d5bedf7a1ddb119a42a6de08d90f285dc0a981e79c55452c1ed";
+const BUNDLE_SHA256 = "695791dfda6058d68453d9e146146d5cdda1439d86c40a7ec249cb4e14a12be3";
 const BUNDLE_PATH = join("dander", "control", "contracts", "v1");
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,13 +27,19 @@ const roots = [
   ["api-error", "ApiErrorEnvelope", "validateApiError"],
   ["capabilities", "CapabilitiesResponse", "validateCapabilities"],
   ["connector-catalog", "ConnectorCatalogResponse", "validateConnectorCatalog"],
+  ["control-bootstrap", "ControlBootstrapDescriptor", "validateControlBootstrap"],
   ["deployment-preview", "DeploymentPreviewResponse", "validateDeploymentPreview"],
+  ["graph-create", "GraphCreateRequest", "validateGraphCreate"],
+  ["graph-page", "GraphPageResponse", "validateGraphPage"],
+  ["graph-resource", "GraphResourceResponse", "validateGraphResource"],
   ["graph-validation", "GraphValidationResponse", "validateGraphValidation"],
   ["log-page", "LogPageResponse", "validateLogPage"],
   ["mutation-result", "MutationResult", "validateMutationResult"],
   ["operation-catalog", "OperationCatalogResponse", "validateOperationCatalog"],
   ["pipeline-graph", "PipelineGraphDocument", "validatePipelineGraph"],
   ["plugin-catalog", "PluginCatalogResponse", "validatePluginCatalog"],
+  ["project-list", "ProjectListResponse", "validateProjectList"],
+  ["run-page", "RunPageResponse", "validateRunPage"],
   ["run-request", "RunRequest", "validateRunRequest"],
   ["run-status", "RunStatusResponse", "validateRunStatus"],
 ];

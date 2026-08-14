@@ -1,9 +1,9 @@
 /** Generated from the exact published Dander wheel; do not edit by hand. */
 export const DANDER_CONTRACT_PACKAGE = "dander-platform" as const;
-export const DANDER_CONTRACT_PACKAGE_VERSION = "0.9.0rc18" as const;
-export const DANDER_CONTRACT_WHEEL = "dander_platform-0.9.0rc18-py3-none-any.whl" as const;
+export const DANDER_CONTRACT_PACKAGE_VERSION = "0.9.0rc19" as const;
+export const DANDER_CONTRACT_WHEEL = "dander_platform-0.9.0rc19-py3-none-any.whl" as const;
 export const DANDER_CONTRACT_WHEEL_SHA256 =
-  "4500b32451c02b6331a337b6d38eb96cc49a29838b6e3ea5a2b87b9daf85406c" as const;
+  "8f1336786e46471a2048d6250008ad176ff3b62d047020872659304c7d2db552" as const;
 export const DANDER_CONTRACT_BUNDLE_ID = "io.dander.control.contracts/v1" as const;
 export const DANDER_CONTRACT_BUNDLE_SHA256 =
-  "344ef5ff2d685d5bedf7a1ddb119a42a6de08d90f285dc0a981e79c55452c1ed" as const;
+  "695791dfda6058d68453d9e146146d5cdda1439d86c40a7ec249cb4e14a12be3" as const;
