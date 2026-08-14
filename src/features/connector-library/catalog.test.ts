@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   DanderApiPluginCatalogDiscovery,
+  HostedPluginCatalogDiscovery,
   PluginCatalogDiscoveryError,
 } from "@/features/connector-library/catalog";
 
@@ -64,5 +65,17 @@ describe("DanderApiPluginCatalogDiscovery", () => {
     await expect(
       new DanderApiPluginCatalogDiscovery("http://dander.test", sensitiveFetch).load(),
     ).rejects.toThrow(PluginCatalogDiscoveryError);
+  });
+
+  it("loads curated metadata through the authenticated hosted request", async () => {
+    const request = vi.fn(async () => Response.json(CATALOG));
+
+    await expect(new HostedPluginCatalogDiscovery(request).load()).resolves.toEqual(
+      CATALOG.connectors,
+    );
+    expect(request).toHaveBeenCalledWith("/v1/plugin-catalog", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
   });
 });

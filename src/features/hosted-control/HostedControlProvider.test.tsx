@@ -8,6 +8,11 @@ import {
 } from "@/features/hosted-control/HostedControlProvider";
 import { OidcCallbackPage } from "@/features/hosted-control/OidcCallbackPage";
 import { hostedControlDescriptor } from "@/features/hosted-control/test-fixtures";
+import capabilitiesFixture from "@/generated/dander-contracts/bundle/fixtures/capabilities.json";
+import {
+  DANDER_CONTRACT_BUNDLE_ID,
+  DANDER_CONTRACT_BUNDLE_SHA256,
+} from "@/generated/dander-contracts/metadata";
 
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
@@ -40,10 +45,24 @@ describe("hosted-control presentation boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createSession.mockReturnValue(oidcSession());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          ...capabilitiesFixture,
+          contract: {
+            id: DANDER_CONTRACT_BUNDLE_ID,
+            sha256: DANDER_CONTRACT_BUNDLE_SHA256,
+          },
+          operations: ["graph.read"],
+        }),
+      ),
+    );
   });
 
   afterEach(() => {
     window.history.replaceState(null, "", "/");
+    vi.unstubAllGlobals();
   });
 
   it("keeps the existing workspace available only as explicitly labeled loopback/offline mode", async () => {
@@ -106,6 +125,43 @@ describe("hosted-control presentation boundary", () => {
     );
 
     expect(await screen.findByText("Hosted session")).toBeVisible();
-    expect(screen.getByText("Hosted workspace after callback navigation")).toBeVisible();
+    expect(await screen.findByText("Hosted workspace after callback navigation")).toBeVisible();
+  });
+
+  it("blocks the workspace when actual capabilities do not match the generated contract", async () => {
+    const descriptor = hostedControlDescriptor();
+    mocks.discover.mockResolvedValue({
+      mode: "hosted",
+      descriptor,
+      apiOrigin: "https://control.example.test",
+    });
+    const session = oidcSession();
+    mocks.createSession.mockReturnValue(session);
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      Response.json({
+        ...capabilitiesFixture,
+        contract: { id: DANDER_CONTRACT_BUNDLE_ID, sha256: "0".repeat(64) },
+        operations: ["graph.read"],
+      }),
+    );
+    // Reuse the verified in-memory callback handoff to enter the authenticated state.
+    window.history.replaceState(null, "", "/auth/callback?code=code&state=state");
+    const callback = render(
+      <HostedControlProvider>
+        <OidcCallbackPage kind="signin" />
+      </HostedControlProvider>,
+    );
+    await waitFor(() => expect(session.completeSignIn).toHaveBeenCalled());
+    callback.unmount();
+    window.history.replaceState(null, "", "/");
+    render(
+      <HostedControlProvider>
+        <HostedControlGate>
+          <div>Must remain blocked</div>
+        </HostedControlGate>
+      </HostedControlProvider>,
+    );
+    expect(await screen.findByText("Hosted compatibility is safely blocked")).toBeVisible();
+    expect(screen.queryByText("Must remain blocked")).not.toBeInTheDocument();
   });
 });

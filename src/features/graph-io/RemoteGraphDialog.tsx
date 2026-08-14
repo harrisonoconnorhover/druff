@@ -17,7 +17,13 @@ import type { GraphPersistenceControls } from "@/features/graph-io/useGraphPersi
 
 const PORTABLE_GRAPH_ID = /^[a-z0-9][a-z0-9_-]{0,62}$/;
 
-export function RemoteGraphDialog({ persistence }: { persistence: GraphPersistenceControls }) {
+export function RemoteGraphDialog({
+  persistence,
+  canCreate = true,
+}: {
+  persistence: GraphPersistenceControls;
+  canCreate?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [project, setProject] = useState("");
   const [graphId, setGraphId] = useState("");
@@ -136,6 +142,7 @@ export function RemoteGraphDialog({ persistence }: { persistence: GraphPersisten
               />
               <Button
                 disabled={
+                  !canCreate ||
                   project === "" ||
                   !PORTABLE_GRAPH_ID.test(graphId) ||
                   persistence.status === "saving"
@@ -149,8 +156,9 @@ export function RemoteGraphDialog({ persistence }: { persistence: GraphPersisten
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Use lowercase letters, numbers, hyphens, or underscores; begin with a letter or
-              number.
+              {canCreate
+                ? "Use lowercase letters, numbers, hyphens, or underscores; begin with a letter or number."
+                : "This hosted role does not advertise graph.edit; creating graphs is unavailable."}
             </p>
           </div>
         ) : null}

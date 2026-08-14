@@ -1,6 +1,7 @@
 import { localNetworkRequest } from "@/lib/local-network-request";
 import { PluginCatalogResponseSchema } from "@/lib/dander-contracts";
 import type { PluginCatalogRecord } from "@/generated/dander-contracts/types/plugin-catalog";
+import type { HostedControlFetch } from "@/features/hosted-control/authorized-fetch";
 
 export type PluginCatalogConnector = Omit<PluginCatalogRecord, "installed_version"> & {
   installed_version: string | null;
@@ -46,15 +47,37 @@ export class DanderApiPluginCatalogDiscovery implements PluginCatalogDiscovery {
         `Dander plugin catalog failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = PluginCatalogResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
+    return parsePluginCatalog(await response.json());
+  }
+}
+
+/** Authenticated hosted adapter for Dander's generated curated-plugin DTO. */
+export class HostedPluginCatalogDiscovery implements PluginCatalogDiscovery {
+  constructor(private readonly request: HostedControlFetch) {}
+
+  async load(): Promise<PluginCatalogConnector[]> {
+    const response = await this.request("/v1/plugin-catalog", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (response.status !== 200) {
       throw new PluginCatalogDiscoveryError(
-        "Dander returned plugin-catalog metadata this Druff version cannot safely use.",
+        `Hosted Dander plugin catalog failed (${response.status} ${response.statusText}).`,
       );
     }
-    return (parsed.data.connectors ?? []).map((connector) => ({
-      ...connector,
-      installed_version: connector.installed_version ?? null,
-    }));
+    return parsePluginCatalog(await response.json());
   }
+}
+
+function parsePluginCatalog(input: unknown): PluginCatalogConnector[] {
+  const parsed = PluginCatalogResponseSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new PluginCatalogDiscoveryError(
+      "Dander returned plugin-catalog metadata this Druff version cannot safely use.",
+    );
+  }
+  return (parsed.data.connectors ?? []).map((connector) => ({
+    ...connector,
+    installed_version: connector.installed_version ?? null,
+  }));
 }

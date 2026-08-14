@@ -8,6 +8,7 @@ import {
   ComparisonOperatorSchema,
   type ComparisonOperator,
 } from "@/features/pipeline-operations/operationConfig";
+import type { HostedControlFetch } from "@/features/hosted-control/authorized-fetch";
 
 type OperationParameter = Omit<GeneratedOperationParameter, "operators"> & {
   operators?: ComparisonOperator[];
@@ -67,12 +68,34 @@ export class DanderApiOperationCatalogDiscovery implements OperationCatalogDisco
         `Dander operation discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    const parsed = OperationCatalogResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
+    return parseOperationCatalog(await response.json());
+  }
+}
+
+/** Authenticated hosted adapter for Dander's generated operation catalog. */
+export class HostedOperationCatalogDiscovery implements OperationCatalogDiscovery {
+  constructor(private readonly request: HostedControlFetch) {}
+
+  async load(): Promise<OperationDescriptor[]> {
+    const response = await this.request("/v1/operations", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (response.status !== 200) {
       throw new OperationCatalogDiscoveryError(
-        "Dander returned operation metadata this Druff version cannot safely use.",
+        `Hosted Dander operation discovery failed (${response.status} ${response.statusText}).`,
       );
     }
-    return parsed.data.operations.map(normalizeOperation);
+    return parseOperationCatalog(await response.json());
   }
+}
+
+function parseOperationCatalog(input: unknown): OperationDescriptor[] {
+  const parsed = OperationCatalogResponseSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new OperationCatalogDiscoveryError(
+      "Dander returned operation metadata this Druff version cannot safely use.",
+    );
+  }
+  return parsed.data.operations.map(normalizeOperation);
 }

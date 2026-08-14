@@ -1,14 +1,16 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { Violation } from "@/lib/pipeline-graph";
-import type { ViolationIndex } from "@/features/pipeline-canvas/validation/attributeViolations";
+import type {
+  CanvasValidationIssue,
+  ViolationIndex,
+} from "@/features/pipeline-canvas/validation/attributeViolations";
 
 export type { ViolationIndex };
 
 /** Stable empty result for an id absent from the index, so a clean node/edge never allocates a
  * new array reference per render. */
-const NO_VIOLATIONS: Violation[] = [];
+const NO_VIOLATIONS: CanvasValidationIssue[] = [];
 
 const EMPTY_INDEX: ViolationIndex = { byNodeId: {}, byEdgeId: {} };
 
@@ -32,13 +34,13 @@ export function ViolationProvider({
 }
 
 /** A node's own violations (`[]` when clean, e.g. outside any `ViolationProvider`). */
-export function useNodeViolations(nodeId: string): Violation[] {
+export function useNodeViolations(nodeId: string): CanvasValidationIssue[] {
   const index = useContext(ViolationIndexContext);
   return index.byNodeId[nodeId] ?? NO_VIOLATIONS;
 }
 
 /** An edge's own violations (`[]` when clean, e.g. outside any `ViolationProvider`). */
-export function useEdgeViolations(edgeId: string): Violation[] {
+export function useEdgeViolations(edgeId: string): CanvasValidationIssue[] {
   const index = useContext(ViolationIndexContext);
   return index.byEdgeId[edgeId] ?? NO_VIOLATIONS;
 }

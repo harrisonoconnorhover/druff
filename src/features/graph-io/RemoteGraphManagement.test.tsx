@@ -85,4 +85,38 @@ describe("remote graph management UI", () => {
     await user.click(screen.getByRole("button", { name: "Delete hosted graph" }));
     expect(persistence.delete).toHaveBeenCalledOnce();
   });
+
+  it("fails closed for save and delete when the hosted role lacks mutation capabilities", () => {
+    const persistence = controls({
+      status: "clean",
+      attached: true,
+      revision: '"opaque-revision"',
+      address: { project: "demo-project", graph: "alpha-graph" },
+    });
+    render(
+      <GraphToolbar
+        viewMode="canvas"
+        onViewModeChange={vi.fn()}
+        persistence={persistence}
+        canEditHosted={false}
+        canDeleteHosted={false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Save hosted graph" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(persistence.save).not.toHaveBeenCalled();
+    expect(persistence.delete).not.toHaveBeenCalled();
+  });
+
+  it("disables hosted create when graph.edit is not advertised", async () => {
+    const user = userEvent.setup();
+    const persistence = controls();
+    render(<RemoteGraphDialog persistence={persistence} canCreate={false} />);
+
+    await user.click(screen.getByRole("button", { name: "Browse hosted graphs" }));
+    await user.type(screen.getByLabelText("Create from current local draft"), "new-graph");
+    expect(screen.getByRole("button", { name: "Create" })).toBeDisabled();
+    expect(screen.getByText(/does not advertise graph.edit/i)).toBeVisible();
+  });
 });

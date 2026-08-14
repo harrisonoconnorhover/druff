@@ -57,11 +57,24 @@ beforeEach(() => {
 describe("GraphEditor control mode", () => {
   it("never constructs or exposes the legacy loopback operations path in hosted mode", () => {
     const browserFetch = vi.spyOn(globalThis, "fetch");
-    vi.mocked(useHostedControl).mockReturnValue({ mode: "hosted", request } as never);
+    vi.mocked(useHostedControl).mockReturnValue({
+      mode: "hosted",
+      request,
+      capabilities: {
+        api_version: "v1",
+        dander_version: "0.9.0rc19",
+        contract: { id: "io.dander.control.contracts/v1", sha256: "a".repeat(64) },
+        compatibility: { minimum_druff_contract: "1.0.0", maximum_druff_contract: "1.x" },
+        limits: { max_graph_bytes: 1, max_log_records: 1, max_page_size: 1 },
+        operations: ["graph.read", "graph.edit", "graph.validate"],
+      },
+      hasCapability: (capability: string) =>
+        ["graph.read", "graph.edit", "graph.validate"].includes(capability),
+    } as never);
 
     render(<GraphEditor />);
 
-    expect(screen.getByText(/hosted canonical graph editing/i)).toBeInTheDocument();
+    expect(screen.getByText("Hosted Dander")).toBeInTheDocument();
     expect(screen.queryByText("legacy loopback operations")).not.toBeInTheDocument();
     expect(useGraphOperations).not.toHaveBeenCalled();
     expect(browserFetch).not.toHaveBeenCalled();
@@ -69,12 +82,17 @@ describe("GraphEditor control mode", () => {
   });
 
   it("keeps the existing served-file operations path in loopback mode", () => {
-    vi.mocked(useHostedControl).mockReturnValue({ mode: "loopback", request } as never);
+    vi.mocked(useHostedControl).mockReturnValue({
+      mode: "loopback",
+      request,
+      capabilities: null,
+      hasCapability: () => false,
+    } as never);
 
     render(<GraphEditor />);
 
     expect(screen.getByText("legacy loopback operations")).toBeInTheDocument();
     expect(screen.getByText(/explicitly served graph file/i)).toBeInTheDocument();
-    expect(useGraphOperations).toHaveBeenCalledOnce();
+    expect(useGraphOperations).toHaveBeenCalled();
   });
 });

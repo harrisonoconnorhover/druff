@@ -21,6 +21,7 @@ import {
 import { useGraphStore } from "@/lib/graph-store";
 import { useGraphViolations } from "@/features/pipeline-canvas/validation/useGraphViolations";
 import { ViolationProvider } from "@/features/pipeline-canvas/validation/ViolationContext";
+import type { ViolationIndex } from "@/features/pipeline-canvas/validation/attributeViolations";
 
 const nodeTypes = { pipelineNode: PipelineNode };
 const edgeTypes = { pipelineEdge: PipelineEdge };
@@ -30,7 +31,7 @@ const edgeTypes = { pipelineEdge: PipelineEdge };
 // `graphEdgeToCanvasEdge` and `SEED_GRAPH`.
 const defaultEdgeOptions = { type: "pipelineEdge" };
 
-function Canvas() {
+function Canvas({ remoteViolations }: { remoteViolations?: ViolationIndex }) {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const onNodesChange = useGraphStore((s) => s.onNodesChange);
@@ -38,7 +39,7 @@ function Canvas() {
   const onConnect = useGraphStore((s) => s.onConnect);
   const addNode = useGraphStore((s) => s.addNode);
   const { screenToFlowPosition } = useReactFlow();
-  const violations = useGraphViolations();
+  const violations = useGraphViolations(remoteViolations);
 
   // Required for `onDrop` to fire at all — the HTML5 DnD spec drops the event unless the drag
   // target's `dragover` calls `preventDefault()`.
@@ -86,7 +87,7 @@ function Canvas() {
  * The pipeline-graph canvas: a node palette sidebar plus the React Flow surface (drag, pan/zoom,
  * connect, and drag-to-add nodes from the palette). Wrap once per canvas instance.
  */
-export function PipelineCanvas() {
+export function PipelineCanvas({ remoteViolations }: { remoteViolations?: ViolationIndex }) {
   return (
     <div className="flex h-full w-full">
       <NodePalette />
@@ -94,7 +95,7 @@ export function PipelineCanvas() {
           canvas, which sizes itself to 100%/100% of its parent, a definite flex-basis to fill. */}
       <div className="min-w-0 flex-1">
         <ReactFlowProvider>
-          <Canvas />
+          <Canvas remoteViolations={remoteViolations} />
         </ReactFlowProvider>
       </div>
     </div>

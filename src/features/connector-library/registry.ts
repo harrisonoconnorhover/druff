@@ -49,6 +49,11 @@ export function getConnectorSnapshot(): ConnectorDescriptor[] {
   return connectorSnapshot;
 }
 
+/** Server-advertised installed connectors only; excludes offline static fallbacks. */
+export function getDiscoveredConnectorSnapshot(): ConnectorDescriptor[] {
+  return discoveredConnectors;
+}
+
 /** Looks up a connector descriptor by Druff's internal/palette `id` (e.g. `"greenhouse"`). */
 export function getConnector(id: string): ConnectorDescriptor | undefined {
   return connectorSnapshot.find((connector) => connector.id === id);

@@ -36,6 +36,8 @@ export type GraphToolbarProps = {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   persistence: GraphPersistenceControls;
+  canEditHosted?: boolean;
+  canDeleteHosted?: boolean;
 };
 
 /**
@@ -47,7 +49,13 @@ export type GraphToolbarProps = {
  * leave the current canvas untouched (no partial load), so a malformed file can't leave the editor
  * half-broken (AC4).
  */
-export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphToolbarProps) {
+export function GraphToolbar({
+  viewMode,
+  onViewModeChange,
+  persistence,
+  canEditHosted = true,
+  canDeleteHosted = true,
+}: GraphToolbarProps) {
   const graphName = useGraphStore((state) => state.graphName);
   const graphTrigger = useGraphStore((state) => state.graphTrigger);
   const nodes = useGraphStore((state) => state.nodes);
@@ -95,7 +103,7 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
   return (
     <div className="flex items-center gap-2 border-b bg-background px-4 py-2">
       {persistence.managed ? (
-        <RemoteGraphDialog persistence={persistence} />
+        <RemoteGraphDialog persistence={persistence} canCreate={canEditHosted} />
       ) : (
         <Button
           variant="default"
@@ -109,7 +117,10 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
       <Button
         variant="outline"
         size="sm"
-        disabled={persistence.status !== "clean" && persistence.status !== "dirty"}
+        disabled={
+          (persistence.managed && !canEditHosted) ||
+          (persistence.status !== "clean" && persistence.status !== "dirty")
+        }
         onClick={() => void persistence.save()}
       >
         <Save /> {persistence.managed ? "Save hosted graph" : "Save to Dander"}
@@ -122,7 +133,11 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
       {persistence.managed && persistence.attached ? (
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={persistence.status === "deleting"}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!canDeleteHosted || persistence.status === "deleting"}
+            >
               <Trash2 /> Delete
             </Button>
           </DialogTrigger>
@@ -135,7 +150,11 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
               </DialogDescription>
             </DialogHeader>
             <DialogFooter showCloseButton>
-              <Button variant="destructive" onClick={() => void persistence.delete()}>
+              <Button
+                variant="destructive"
+                disabled={!canDeleteHosted}
+                onClick={() => void persistence.delete()}
+              >
                 Delete hosted graph
               </Button>
             </DialogFooter>

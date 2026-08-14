@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ConnectorDiscoveryError,
   DanderApiConnectorDiscovery,
+  HostedConnectorDiscovery,
 } from "@/features/connector-library/discovery";
 
 const CATALOG = {
@@ -128,5 +129,16 @@ describe("DanderApiConnectorDiscovery", () => {
       }),
     ]);
     expect(minimal.connectors[0].endpoints[0].fields[0]).not.toHaveProperty("required");
+  });
+
+  it("loads the same generated connector DTO through the authenticated hosted request", async () => {
+    const request = vi.fn(async () => Response.json(CATALOG));
+    const result = await new HostedConnectorDiscovery(request).load();
+
+    expect(result[0]).toMatchObject({ danderConnector: "salesforce" });
+    expect(request).toHaveBeenCalledWith("/v1/connectors", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
   });
 });

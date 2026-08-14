@@ -5,8 +5,9 @@ canvas store, the pure pipeline-graph model/converters, and three browser afford
 
 - **Dander persistence** — loopback mode retains explicit Open/Save against `dander graph serve`.
   Hosted mode lists logical projects and paginated graph summaries, then creates, opens, saves, or
-  deletes through Dander's generated Control API contract. Every mutation carries the exact opaque
-  ETag; conflicts are visible and never overwrite a graph.
+  deletes through Dander's generated Control API contract. Verified capabilities gate the hosted
+  workspace and role-projected operations gate its controls. Every addressed operation carries the
+  exact opaque ETag; conflicts are visible and never overwrite a graph.
 - **File export/import** — `GraphToolbar` exports explicitly named Druff graph drafts and imports
   either those drafts or a version-1 `dander.yaml`, via `src/lib/graph-io/graph-file.ts`.
 - **Canvas ⇄ source toggle** — `GraphEditor` owns `viewMode` and renders either `PipelineCanvas` or
@@ -21,11 +22,23 @@ canvas store, the pure pipeline-graph model/converters, and three browser afford
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
 - `useGraphPersistence.ts` — one async controller for local and hosted persistence, retaining
   dirty/saving/conflict/reload state and detaching imports or deleted graphs safely.
+- `../hosted-control/control-api.ts` / `useHostedValidationPreview.ts` — compatible capabilities,
+  addressed server validation, bounded deployment preview, and stale-result rejection.
 
-On Open, the controller also discovers the connected runtime's presentation-only connector,
-package, and transform-operation catalogs. Catalog failure never blocks graph access. The operation
-editor writes the advertised safe subset to canonical transform `config.operations`; it does not
-create a Druff-only graph schema or execute transformations in the browser.
+Authenticated hosted entry must first verify Dander's API version, exact contract bundle, supported
+Druff range, and `graph.read` capability. The same role-projected capability result gates mutation,
+validation, and preview presentation; Dander still enforces authorization server-side. On Open, the
+controller also discovers the connected runtime's presentation-only connector, package, and
+transform-operation catalogs. Catalog failure never invents support or substitutes the offline
+fallback. The operation editor writes the advertised safe subset to canonical transform
+`config.operations`; it does not create a Druff-only graph schema or execute transformations in the
+browser.
+
+Remote validation stays advisory alongside local validation. Dander issue paths are attributed to
+canvas nodes/edges when possible and otherwise shown as general issues. Preview summaries and
+affected resources are length/count bounded before rendering. Both operations bind to the current
+address, exact ETag, and canonical-content identity; stale results are discarded and structured
+conflicts require an explicit reload.
 
 ## Single serialization path
 
