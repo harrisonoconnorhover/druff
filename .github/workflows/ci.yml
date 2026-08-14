@@ -126,8 +126,6 @@ jobs:
           image="$OCI_REGISTRY/$OCI_REPOSITORY@${{ steps.inspect.outputs.amd64_digest }}"
           docker pull --platform linux/amd64 "$image"
           test "$(docker inspect --format '{{.Config.User}}' "$image")" = "65532:65532"
-          docker run --rm --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --entrypoint sh "$image" -c \
-            'test ! -d /app/src && test ! -d /app/.git && test ! -f /app/pnpm-lock.yaml && test ! -f /app/package.json'
 
           rootfs="$RUNNER_TEMP/rootfs"
           mkdir -p "$rootfs"
@@ -136,6 +134,11 @@ jobs:
           docker export "$export_id" | tar -xf - -C "$rootfs"
           docker rm "$export_id"
           export_id=""
+          test ! -d "$rootfs/app/src"
+          test ! -d "$rootfs/app/.git"
+          test ! -f "$rootfs/app/pnpm-lock.yaml"
+          test ! -f "$rootfs/app/package.json"
+          test -x "$rootfs/usr/bin/caddy"
           node scripts/static-artifact.mjs --check --root "$rootfs/app"
 
           runtime_id="$(docker run --detach --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --publish 127.0.0.1:3000:8080 "$image")"

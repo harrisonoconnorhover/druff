@@ -3,7 +3,7 @@
 ## Finished
 
 - Added a deterministic, content-addressed static export with exact source and contract provenance.
-- Added a pinned non-root/read-only Caddy runtime with callback routes, probes, and security policy.
+- Added a vulnerability-clean scratch/Caddy runtime with callback routes, probes, and security policy.
 - Added multi-platform OCI, SBOM/SLSA association, reproducibility, and exact-promotion verification.
 - Added exact-image runtime checks plus pre-promotion vulnerability and secret scans in protected CI.
 - Extended the full hosted browser journey through cancellation, replay, success, and restart.

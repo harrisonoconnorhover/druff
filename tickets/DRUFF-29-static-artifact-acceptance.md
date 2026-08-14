@@ -36,10 +36,12 @@ and live proof remain Dander-owned later phases.
   and ignored build inputs cannot leak into a later build. One build wrapper resolves provenance
   once for Next and the manifest, uses exact HEAD only from a clean worktree, and records
   `unrecorded` with epoch zero for local dirty sources.
-- The final Caddy stage is pinned, source-free, UID/GID `65532:65532`, and runnable with a read-only
-  root plus disposable `/tmp`. It serves extensionless callback/logout routes, probes, immutable
-  hashed assets, and one committed CSP/cache/security-header policy exercised by both the exact
-  image verifier and the complete hosted Playwright journey.
+- The final scratch stage contains only a vulnerability-clean Caddy 2.11.4 binary rebuilt from a
+  pinned toolchain and dependency set, configuration, and static bundle. It is source-free,
+  UID/GID `65532:65532`, and runnable with a read-only root plus disposable `/tmp`. It serves
+  extensionless callback/logout routes,
+  probes, immutable hashed assets, and one committed CSP/cache/security-header policy exercised by
+  both the exact image verifier and the complete hosted Playwright journey.
 - Protected CI builds linux/amd64 and linux/arm64 from one clean context and repeats the static build
   from a second clean context with the same revision/epoch. A bounded registry verifier requires one
   exact shared static layer, an associated SPDX SBOM and SLSA statement for each runnable manifest,

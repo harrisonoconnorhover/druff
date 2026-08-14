@@ -22,7 +22,18 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d AS runner
+FROM --platform=$BUILDPLATFORM caddy:2.11.4-builder-alpine@sha256:2b9994510fadb5dfa5257a5357cbe26a2c4a3298f8cc675796a6570218280ce7 AS caddy-builder
+
+ARG TARGETOS
+ARG TARGETARCH
+RUN XCADDY_SETCAP=0 CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    xcaddy build v2.11.4 \
+      --output /usr/bin/caddy \
+      --replace golang.org/x/net=golang.org/x/net@v0.56.0 \
+      --replace golang.org/x/text=golang.org/x/text@v0.39.0 \
+      --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
+
+FROM scratch AS runner
 
 ARG SOURCE_REVISION=unrecorded
 ARG SOURCE_CREATED=1970-01-01T00:00:00Z
@@ -37,6 +48,7 @@ LABEL org.opencontainers.image.version=$DRUFF_VERSION
 
 WORKDIR /app
 
+COPY --from=caddy-builder /usr/bin/caddy /usr/bin/caddy
 COPY --chown=65532:65532 Caddyfile /etc/caddy/Caddyfile
 COPY --from=builder --chown=65532:65532 /app/out ./
 
@@ -48,4 +60,4 @@ USER 65532:65532
 
 EXPOSE 8080
 
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+CMD ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
