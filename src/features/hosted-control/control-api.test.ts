@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import capabilitiesFixture from "@/generated/dander-contracts/bundle/fixtures/capabilities.json";
+import logsFixture from "@/generated/dander-contracts/bundle/fixtures/log-page.json";
+import mutationFixture from "@/generated/dander-contracts/bundle/fixtures/mutation-result.json";
 import previewFixture from "@/generated/dander-contracts/bundle/fixtures/deployment-preview.json";
+import runFixture from "@/generated/dander-contracts/bundle/fixtures/run-status.json";
 import validationFixture from "@/generated/dander-contracts/bundle/fixtures/graph-validation.json";
 import {
   HostedControlApiClient,
@@ -112,5 +115,113 @@ describe("HostedControlApiClient", () => {
       .catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(Error);
     expect((failure as Error).message).not.toContain(raw);
+  });
+
+  it("uses exact normalized run routes and correlates every response", async () => {
+    const cancel = {
+      ...mutationFixture,
+      operation: "cancel" as const,
+      resulting_run_id: null,
+      run_id: runFixture.run_id,
+      state: "canceling" as const,
+    };
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(runFixture, { status: 202 }))
+      .mockResolvedValueOnce(Response.json(runFixture))
+      .mockResolvedValueOnce(Response.json(logsFixture))
+      .mockResolvedValueOnce(Response.json(cancel))
+      .mockResolvedValueOnce(Response.json(mutationFixture));
+    const client = new HostedControlApiClient(request);
+
+    await expect(client.startRun(ADDRESS, REVISION)).resolves.toEqual(runFixture);
+    await expect(client.getRun(runFixture.run_id)).resolves.toEqual(runFixture);
+    await expect(client.logs(runFixture.run_id, 25)).resolves.toEqual(logsFixture);
+    await expect(client.cancelRun(runFixture.run_id)).resolves.toEqual(cancel);
+    await expect(client.replayRun(runFixture.run_id)).resolves.toEqual(mutationFixture);
+
+    expect(request.mock.calls[0]?.[0]).toBe(
+      "/v1/projects/project%20%2F%20one/graphs/graph%20%3F%20one/runs",
+    );
+    expect(request.mock.calls[0]?.[1]).toMatchObject({
+      method: "POST",
+      headers: {
+        "If-Match": REVISION,
+        "Idempotency-Key": expect.stringMatching(/^druff-/),
+      },
+    });
+    expect(request.mock.calls[1]?.[0]).toBe("/v1/runs/run-synthetic");
+    expect(request.mock.calls[2]?.[0]).toBe("/v1/runs/run-synthetic/logs?limit=25");
+    expect(request.mock.calls[3]?.[0]).toBe("/v1/runs/run-synthetic/cancel");
+    expect(request.mock.calls[4]?.[0]).toBe("/v1/runs/run-synthetic/replay");
+  });
+
+  it("retains the start key across lost or malformed success responses", async () => {
+    const request = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("lost response"))
+      .mockResolvedValueOnce(Response.json({ ...runFixture, run_id: "" }, { status: 202 }))
+      .mockResolvedValueOnce(Response.json(runFixture, { status: 202 }));
+    const client = new HostedControlApiClient(request);
+
+    await expect(client.startRun(ADDRESS, REVISION)).rejects.toThrow(/lost response/i);
+    await expect(client.startRun(ADDRESS, REVISION)).rejects.toMatchObject({ ambiguous: true });
+    await expect(client.startRun(ADDRESS, REVISION)).resolves.toEqual(runFixture);
+
+    const keys = request.mock.calls.map(
+      (call) => (call[1]?.headers as Record<string, string>)["Idempotency-Key"],
+    );
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  it("rejects mismatched run identities without clearing mutation keys", async () => {
+    const wrongCancel = {
+      accepted: true,
+      operation: "cancel",
+      resulting_run_id: null,
+      run_id: "another-run",
+      state: "canceling",
+    };
+    const validCancel = { ...wrongCancel, run_id: runFixture.run_id };
+    const missingReplayId = { ...mutationFixture, resulting_run_id: null };
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ ...runFixture, run_id: "another-run" }))
+      .mockResolvedValueOnce(Response.json(wrongCancel))
+      .mockResolvedValueOnce(Response.json(validCancel))
+      .mockResolvedValueOnce(Response.json(missingReplayId))
+      .mockResolvedValueOnce(Response.json(mutationFixture));
+    const client = new HostedControlApiClient(request);
+
+    await expect(client.getRun(runFixture.run_id)).rejects.toThrow(/different run/i);
+    await expect(client.cancelRun(runFixture.run_id)).rejects.toMatchObject({ ambiguous: true });
+    await expect(client.cancelRun(runFixture.run_id)).resolves.toMatchObject({
+      run_id: runFixture.run_id,
+      operation: "cancel",
+    });
+    await expect(client.replayRun(runFixture.run_id)).rejects.toMatchObject({ ambiguous: true });
+    await expect(client.replayRun(runFixture.run_id)).resolves.toEqual(mutationFixture);
+
+    const cancelKeys = [request.mock.calls[1], request.mock.calls[2]].map(
+      (call) => (call?.[1]?.headers as Record<string, string>)["Idempotency-Key"],
+    );
+    const replayKeys = [request.mock.calls[3], request.mock.calls[4]].map(
+      (call) => (call?.[1]?.headers as Record<string, string>)["Idempotency-Key"],
+    );
+    expect(new Set(cancelKeys).size).toBe(1);
+    expect(new Set(replayKeys).size).toBe(1);
+  });
+
+  it("rejects oversized log fields before presentation", async () => {
+    const request = vi.fn(async () =>
+      Response.json({
+        ...logsFixture,
+        records: [{ ...logsFixture.records[0], message: "x".repeat(4_097) }],
+      }),
+    );
+    const client = new HostedControlApiClient(request);
+
+    await expect(client.logs(runFixture.run_id, 25)).rejects.toThrow(/cannot safely display/i);
+    await expect(client.logs(runFixture.run_id, 101)).rejects.toThrow(/unsafe hosted log-page/i);
   });
 });
