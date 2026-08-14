@@ -22,8 +22,9 @@ canvas store, the pure pipeline-graph model/converters, and three browser afford
 - `SourceView.tsx` — read-only Monaco view of the live canvas encoded as YAML/JSON.
 - `useGraphPersistence.ts` — one async controller for local and hosted persistence, retaining
   dirty/saving/conflict/reload state and detaching imports or deleted graphs safely.
-- `../hosted-control/control-api.ts` / `useHostedValidationPreview.ts` — compatible capabilities,
-  addressed server validation, bounded deployment preview, and stale-result rejection.
+- `../hosted-control/control-api.ts`, `useHostedValidationPreview.ts`, and
+  `useHostedRunControls.ts` — compatible capabilities, addressed server validation, bounded
+  deployment preview, provider-neutral run controls, and strict stale/identity rejection.
 
 Authenticated hosted entry must first verify Dander's API version, exact contract bundle, supported
 Druff range, and `graph.read` capability. The same role-projected capability result gates mutation,
@@ -33,6 +34,11 @@ transform-operation catalogs. Catalog failure never invents support or substitut
 fallback. The operation editor writes the advertised safe subset to canonical transform
 `config.operations`; it does not create a Druff-only graph schema or execute transformations in the
 browser.
+
+Hosted runs start only from a clean attached graph and retain that captured address/revision while
+the operator keeps editing. Active normalized states poll every two seconds. Cancel, replay, and
+one bounded sanitized log page appear only when both the hosted role and current run allow them;
+ambiguous mutation retries reuse the original idempotency key.
 
 Remote validation stays advisory alongside local validation. Dander issue paths are attributed to
 canvas nodes/edges when possible and otherwise shown as general issues. Preview summaries and

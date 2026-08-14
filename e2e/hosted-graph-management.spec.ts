@@ -33,6 +33,12 @@ type StoredGraph = {
   updatedAt: string;
 };
 
+type StoredRun = {
+  runId: string;
+  state: "queued" | "running" | "succeeded" | "canceling" | "canceled";
+  polls: number;
+};
+
 type DurableControlState = {
   records: Map<string, StoredGraph>;
   creates: Map<string, StoredGraph>;
@@ -41,6 +47,9 @@ type DurableControlState = {
   loseNextCreate: boolean;
   loseNextDelete: boolean;
   previewCalls: number;
+  runs: Map<string, StoredRun>;
+  runMutations: Map<string, unknown>;
+  runCounter: number;
 };
 
 function graphDocument(name: string, nodeName: string) {
@@ -88,6 +97,27 @@ function resource(record: StoredGraph) {
 
 function errorEnvelope(code: string, message: string) {
   return { error: { code, message, correlation_id: "e2e-correlation", details: [] } };
+}
+
+function runStatus(run: StoredRun) {
+  return {
+    run_id: run.runId,
+    state: run.state,
+    stage: run.state === "succeeded" ? "complete" : "execute",
+    started_at: "2026-08-14T11:00:00Z",
+    finished_at: run.state === "succeeded" ? "2026-08-14T11:00:04Z" : null,
+    endpoints: 1,
+    extracted: run.state === "succeeded" ? 2 : 0,
+    affected: run.state === "succeeded" ? 2 : 0,
+    models: run.state === "succeeded" ? 1 : 0,
+    assertions: run.state === "succeeded" ? 1 : 0,
+    assets: 0,
+    failure_code: null,
+    failure_summary: null,
+    can_cancel: run.state === "queued" || run.state === "running",
+    can_replay: run.state === "succeeded",
+    logs_available: run.state === "running" || run.state === "succeeded",
+  };
 }
 
 function corsHeaders() {
@@ -250,6 +280,11 @@ function createControlService(durable: DurableControlState) {
           "graph.delete",
           "graph.validate",
           "deployment.preview",
+          "run.start",
+          "run.read",
+          "run.logs",
+          "run.cancel",
+          "run.replay",
         ],
       });
       return;
@@ -417,6 +452,122 @@ function createControlService(durable: DurableControlState) {
       return;
     }
 
+    const startRunMatch = /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/runs$/.exec(
+      url.pathname,
+    );
+    if (startRunMatch && request.method() === "POST") {
+      const graph = decodeURIComponent(startRunMatch[1]!);
+      const current = durable.records.get(graph);
+      if (!current || request.headers()["if-match"] !== current.revision) {
+        await json(
+          route,
+          412,
+          errorEnvelope("operation_conflict", "The graph revision no longer matches."),
+        );
+        return;
+      }
+      const key = request.headers()["idempotency-key"]!;
+      const replay = durable.runMutations.get(`start:${key}`);
+      if (replay) {
+        await json(route, 202, replay);
+        return;
+      }
+      durable.runCounter += 1;
+      const run: StoredRun = {
+        runId: `run-synthetic-${durable.runCounter}`,
+        state: "queued",
+        polls: 0,
+      };
+      durable.runs.set(run.runId, run);
+      const status = runStatus(run);
+      durable.runMutations.set(`start:${key}`, status);
+      await json(route, 202, status);
+      return;
+    }
+
+    const runMatch = /^\/v1\/runs\/([^/]+)$/.exec(url.pathname);
+    if (runMatch && request.method() === "GET") {
+      const run = durable.runs.get(decodeURIComponent(runMatch[1]!));
+      if (!run) {
+        await json(route, 404, errorEnvelope("run_not_found", "The run does not exist."));
+        return;
+      }
+      run.polls += 1;
+      if (run.polls === 1) run.state = "running";
+      if (run.polls >= 2) run.state = "succeeded";
+      await json(route, 200, runStatus(run));
+      return;
+    }
+
+    const logMatch = /^\/v1\/runs\/([^/]+)\/logs$/.exec(url.pathname);
+    if (logMatch && request.method() === "GET") {
+      const runId = decodeURIComponent(logMatch[1]!);
+      if (!durable.runs.has(runId)) {
+        await json(route, 404, errorEnvelope("run_not_found", "The run does not exist."));
+        return;
+      }
+      await json(route, 200, {
+        records: [
+          {
+            timestamp: "2026-08-14T11:00:02Z",
+            level: "info",
+            code: "synthetic_progress",
+            message: "Synthetic run is progressing safely.",
+            correlation_id: "run-correlation",
+          },
+        ],
+        next_cursor: null,
+      });
+      return;
+    }
+
+    const mutationMatch = /^\/v1\/runs\/([^/]+)\/(cancel|replay)$/.exec(url.pathname);
+    if (mutationMatch && request.method() === "POST") {
+      const runId = decodeURIComponent(mutationMatch[1]!);
+      const operation = mutationMatch[2] as "cancel" | "replay";
+      const run = durable.runs.get(runId);
+      if (!run) {
+        await json(route, 404, errorEnvelope("run_not_found", "The run does not exist."));
+        return;
+      }
+      const key = request.headers()["idempotency-key"]!;
+      const replay = durable.runMutations.get(`${operation}:${key}`);
+      if (replay) {
+        await json(route, 200, replay);
+        return;
+      }
+      if (operation === "cancel") {
+        run.state = "canceling";
+        const result = {
+          operation,
+          accepted: true,
+          run_id: runId,
+          resulting_run_id: null,
+          state: "canceling",
+        };
+        durable.runMutations.set(`${operation}:${key}`, result);
+        await json(route, 200, result);
+        return;
+      }
+      durable.runCounter += 1;
+      const next: StoredRun = {
+        runId: `run-synthetic-${durable.runCounter}`,
+        state: "queued",
+        polls: 0,
+      };
+      durable.runs.set(next.runId, next);
+      const result = {
+        operation,
+        accepted: true,
+        run_id: runId,
+        resulting_run_id: next.runId,
+        state: "queued",
+      };
+      durable.runMutations.set(`${operation}:${key}`, result);
+      await json(route, 200, result);
+      return;
+    }
+
     const match = /^\/v1\/projects\/demo-project\/graphs\/([^/]+)$/.exec(url.pathname);
     if (match) {
       const graph = decodeURIComponent(match[1]!);
@@ -577,6 +728,9 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     loseNextCreate: false,
     loseNextDelete: false,
     previewCalls: 0,
+    runs: new Map(),
+    runMutations: new Map(),
+    runCounter: 0,
   };
   const alpha = nextRecord(durable, "alpha-graph", graphDocument("alpha-pipeline", "Source"));
   const beta = nextRecord(durable, "beta-graph", graphDocument("beta-pipeline", "Beta source"));
@@ -638,6 +792,20 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
   await expect(page.getByText(/Reload the hosted graph before retrying/i)).toBeVisible();
   await page.getByRole("button", { name: "Reload hosted version" }).click();
   await expect(page.locator(".react-flow__node", { hasText: "Server edit" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Start run" }).click();
+  const normalizedRun = page.getByLabel("Normalized run status");
+  await expect(normalizedRun).toContainText("Run run-synthetic-1: queued");
+  await expect(normalizedRun).toContainText("Run run-synthetic-1: running", {
+    timeout: 5_000,
+  });
+  await page.getByRole("button", { name: "Load bounded logs" }).click();
+  await expect(page.getByText("Synthetic run is progressing safely.")).toBeVisible();
+  await expect(normalizedRun).toContainText("Run run-synthetic-1: succeeded", {
+    timeout: 5_000,
+  });
+  await page.getByRole("button", { name: "Replay run" }).click();
+  await expect(page.getByText("Dander acknowledged replay as run-synthetic-2.")).toBeVisible();
 
   const source = page.locator(".react-flow__node", { hasText: "Server edit" });
   await source.click();

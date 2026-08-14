@@ -9,7 +9,9 @@ import { useGraphOperations } from "@/features/graph-operations/useGraphOperatio
 import { PipelineCanvas } from "@/features/pipeline-canvas/PipelineCanvas";
 import { useHostedControl } from "@/features/hosted-control/HostedControlProvider";
 import { HostedControlApiClient } from "@/features/hosted-control/control-api";
+import { HostedRunControlsBar } from "@/features/hosted-control/HostedRunControlsBar";
 import { HostedValidationPreviewBar } from "@/features/hosted-control/HostedValidationPreviewBar";
+import { useHostedRunControls } from "@/features/hosted-control/useHostedRunControls";
 import { useHostedValidationPreview } from "@/features/hosted-control/useHostedValidationPreview";
 import { HostedConnectorDiscovery } from "@/features/connector-library/discovery";
 import { HostedPluginCatalogDiscovery } from "@/features/connector-library/catalog";
@@ -55,6 +57,13 @@ export function GraphEditor() {
     contentSha256: persistence.contentSha256,
     graphIsClean: persistence.status === "clean",
   });
+  const hostedRuns = useHostedRunControls({
+    client: hostedControlApi,
+    capabilities: control.capabilities,
+    address: persistence.address,
+    revision: persistence.revision,
+    graphIsClean: persistence.status === "clean",
+  });
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">
@@ -66,11 +75,18 @@ export function GraphEditor() {
         canDeleteHosted={control.hasCapability("graph.delete")}
       />
       {control.mode === "hosted" && control.capabilities ? (
-        <HostedValidationPreviewBar
-          capabilities={control.capabilities}
-          operations={hostedOperations}
-          onReload={persistence.reload}
-        />
+        <>
+          <HostedValidationPreviewBar
+            capabilities={control.capabilities}
+            operations={hostedOperations}
+            onReload={persistence.reload}
+          />
+          <HostedRunControlsBar
+            capabilities={control.capabilities}
+            controls={hostedRuns}
+            onReload={persistence.reload}
+          />
+        </>
       ) : (
         <LoopbackOperations persistence={persistence} />
       )}
