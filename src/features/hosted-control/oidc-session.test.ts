@@ -66,6 +66,7 @@ describe("static OIDC session", () => {
     const url = new URL(request.url);
 
     expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.get("response_mode")).toBe("fragment");
     expect(url.searchParams.get("scope")).toBe("openid");
     expect(url.searchParams.get("resource")).toBe(descriptor.api_audience);
     expect(url.searchParams.get("state")).toBeTruthy();
@@ -130,15 +131,15 @@ describe("static OIDC session", () => {
     expect(manager.signinCallback).not.toHaveBeenCalled();
   });
 
-  it("clears in-memory auth before creating a token-free logout redirect", async () => {
+  it("clears in-memory auth before creating a token-free state-free logout redirect", async () => {
     const { manager, order } = fakeManager();
     const session = new HostedOidcSession(manager);
     await session.beginSignOut();
     expect(order).toEqual(["remove", "redirect"]);
-    expect(manager.signoutRedirect).toHaveBeenCalledWith({ state: {} });
+    expect(manager.signoutRedirect).toHaveBeenCalledWith();
   });
 
-  it("omits tokens from the real end-session URL while retaining state and the fixed callback", async () => {
+  it("uses a state-free end-session URL and accepts the clean fixed callback", async () => {
     const descriptor = hostedControlDescriptor();
     const settings = buildOidcSettings(descriptor, window.sessionStorage);
     let redirectUrl: string | null = null;
@@ -168,14 +169,16 @@ describe("static OIDC session", () => {
       navigator,
     );
     await manager.storeUser(user({ id_token: "id-token-that-must-not-enter-the-url" }));
-    await new HostedOidcSession(manager).beginSignOut();
+    const session = new HostedOidcSession(manager);
+    await session.beginSignOut();
 
     expect(redirectUrl).not.toBeNull();
     const parsed = new URL(redirectUrl!);
     expect(parsed.searchParams.get("client_id")).toBe(descriptor.public_client_id);
     expect(parsed.searchParams.get("post_logout_redirect_uri")).toBe(descriptor.logout_uri);
-    expect(parsed.searchParams.get("state")).toBeTruthy();
+    expect(parsed.searchParams.has("state")).toBe(false);
     expect(parsed.searchParams.has("id_token_hint")).toBe(false);
     expect(parsed.href).not.toContain("id-token-that-must-not-enter-the-url");
+    await expect(session.completeSignOut(descriptor.logout_uri)).resolves.toBeUndefined();
   });
 });

@@ -34,7 +34,8 @@ capability checks are presentation only; Dander authorizes every request.
 - `/bootstrap.json` is the sole hosted discovery location. A 404 selects labeled loopback/offline
   mode; an invalid or incompatible descriptor blocks the workspace.
 - Sign-in and sign-out callbacks are exported at the exact generated descriptor routes. Access
-  tokens use an in-memory store; only code-flow and logout transaction state uses session storage.
+  tokens use an in-memory store; only code-flow transaction state uses session storage. DRUFF-30
+  later made logout state-free after clearing memory so managed request logs receive no query data.
 - The hosted fetch boundary fixes the descriptor API origin, omits cookies, refuses redirects and
   caller Authorization headers, and clears auth on expiry or HTTP 401.
 
