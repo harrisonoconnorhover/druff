@@ -12,10 +12,11 @@ import { hostedControlDescriptor } from "@/features/hosted-control/test-fixtures
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
   discover: vi.fn(),
-  routerReplace: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.routerReplace }) }));
+vi.mock("@/features/hosted-control/HostedWorkspace", () => ({
+  HostedWorkspace: () => <div>Verified hosted workspace</div>,
+}));
 vi.mock("@/features/hosted-control/bootstrap", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/hosted-control/bootstrap")>()),
   discoverControlBootstrap: mocks.discover,
@@ -79,7 +80,7 @@ describe("hosted-control presentation boundary", () => {
       "/auth/callback?code=authorization-code&state=stored-state",
     );
 
-    render(
+    const callback = render(
       <StrictMode>
         <HostedControlProvider>
           <OidcCallbackPage kind="signin" />
@@ -90,6 +91,21 @@ describe("hosted-control presentation boundary", () => {
     await waitFor(() => expect(window.location.href).toBe("http://localhost:3000/auth/callback"));
     await waitFor(() => expect(session.completeSignIn).toHaveBeenCalledWith(original));
     expect(session.completeSignIn).toHaveBeenCalledOnce();
-    expect(mocks.routerReplace).toHaveBeenCalledWith("/");
+    await waitFor(() => expect(window.location.href).toBe("http://localhost:3000/"));
+    expect(screen.getByText("Verified hosted workspace")).toBeVisible();
+
+    callback.unmount();
+    window.history.replaceState(null, "", "/");
+    render(
+      <HostedControlProvider>
+        <HostedControlStatus />
+        <HostedControlGate>
+          <div>Hosted workspace after callback navigation</div>
+        </HostedControlGate>
+      </HostedControlProvider>,
+    );
+
+    expect(await screen.findByText("Hosted session")).toBeVisible();
+    expect(screen.getByText("Hosted workspace after callback navigation")).toBeVisible();
   });
 });

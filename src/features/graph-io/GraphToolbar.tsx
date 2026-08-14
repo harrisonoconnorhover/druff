@@ -1,13 +1,32 @@
 "use client";
 
 import { useRef, type ChangeEvent } from "react";
-import { Code2, Download, FolderOpen, LayoutGrid, Save, Upload } from "lucide-react";
+import {
+  Code2,
+  Download,
+  FolderOpen,
+  LayoutGrid,
+  RotateCcw,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGraphStore } from "@/lib/graph-store";
 import { canvasToGraph, graphToCanvas, type GraphFormat } from "@/lib/pipeline-graph";
 import { exportGraphToFile, parseImportedFile } from "@/lib/graph-io/graph-file";
 import type { GraphPersistenceControls } from "@/features/graph-io/useGraphPersistence";
+import { RemoteGraphDialog } from "@/features/graph-io/RemoteGraphDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 /** Which half of `GraphEditor` is currently showing. Ephemeral UI state — deliberately not part of
  * the graph store (`steering/02-engineering.md`: this is view state, not graph data). */
@@ -75,22 +94,54 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
 
   return (
     <div className="flex items-center gap-2 border-b bg-background px-4 py-2">
-      <Button
-        variant="default"
-        size="sm"
-        disabled={persistence.status === "loading" || persistence.status === "saving"}
-        onClick={() => void persistence.open()}
-      >
-        <FolderOpen /> Open from Dander
-      </Button>
+      {persistence.managed ? (
+        <RemoteGraphDialog persistence={persistence} />
+      ) : (
+        <Button
+          variant="default"
+          size="sm"
+          disabled={persistence.status === "loading" || persistence.status === "saving"}
+          onClick={() => void persistence.open()}
+        >
+          <FolderOpen /> Open from Dander
+        </Button>
+      )}
       <Button
         variant="outline"
         size="sm"
         disabled={persistence.status !== "clean" && persistence.status !== "dirty"}
         onClick={() => void persistence.save()}
       >
-        <Save /> Save to Dander
+        <Save /> {persistence.managed ? "Save hosted graph" : "Save to Dander"}
       </Button>
+      {persistence.managed && persistence.status === "conflict" ? (
+        <Button variant="outline" size="sm" onClick={() => void persistence.reload()}>
+          <RotateCcw /> Reload hosted version
+        </Button>
+      ) : null}
+      {persistence.managed && persistence.attached ? (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="destructive" size="sm" disabled={persistence.status === "deleting"}>
+              <Trash2 /> Delete
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete hosted graph?</DialogTitle>
+              <DialogDescription>
+                Delete {persistence.address?.project}/{persistence.address?.graph} at its current
+                opaque revision. The canvas stays open as a detached local draft.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter showCloseButton>
+              <Button variant="destructive" onClick={() => void persistence.delete()}>
+                Delete hosted graph
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       <span
         className="text-xs text-muted-foreground"
         role="status"
@@ -98,6 +149,26 @@ export function GraphToolbar({ viewMode, onViewModeChange, persistence }: GraphT
       >
         {statusLabel(persistence)}
       </span>
+      {persistence.managed && persistence.address ? (
+        <span
+          className="max-w-sm text-[11px] text-muted-foreground"
+          aria-label="Hosted graph identity"
+        >
+          <span className="font-medium">
+            {persistence.address.project}/{persistence.address.graph}
+          </span>
+          {persistence.revision ? (
+            <span className="ml-2" title={persistence.revision}>
+              Opaque revision: {compact(persistence.revision)}
+            </span>
+          ) : null}
+          {persistence.contentSha256 ? (
+            <span className="ml-2" title={persistence.contentSha256}>
+              Content SHA-256: {compact(persistence.contentSha256)}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
       <Button variant="outline" size="sm" onClick={() => handleExport("yaml")}>
         <Download /> Export draft YAML
       </Button>
@@ -151,9 +222,15 @@ function statusLabel(persistence: GraphPersistenceControls): string {
       return "Unsaved changes";
     case "saving":
       return "Saving…";
+    case "deleting":
+      return "Deleting…";
     case "conflict":
       return "File changed elsewhere — reopen";
     case "error":
       return persistence.error ?? "Dander unavailable";
   }
+}
+
+function compact(value: string): string {
+  return value.length > 18 ? `${value.slice(0, 18)}…` : value;
 }

@@ -2,39 +2,37 @@
 
 ## Finished
 
-- Added verified same-origin `/bootstrap.json` discovery with explicit loopback/offline fallback.
-- Added static OIDC authorization-code + PKCE login with state, nonce, and the Dander API resource.
-- Kept access tokens in memory and callback transactions in session storage; refresh and URL tokens
-  fail closed.
-- Added fixed-origin Bearer requests, expiry/401 clearing, and token-free correlated logout.
-- Exported `/auth/callback` and `/signed-out` without adding a Next server or remote graph UI.
+- Added authenticated hosted project/graph list, create, open, conditional save, and confirmed delete.
+- Preserved dirty/conflict/reload behavior, detached drafts, and local import/export.
+- Kept opaque ETags separate from canonical-content SHA and normalized all DTOs through generated
+  RC19 validators.
+- Retained create/delete idempotency keys across ambiguous retries and synthetic service restarts.
+- Kept legacy localhost operations completely unavailable in hosted mode.
 
 ## Try It
 
-Run `pnpm dev` with no bootstrap file to see labeled loopback/offline mode. A hosted deployment must
-serve Dander's generated public descriptor at `/bootstrap.json`; do not hand-author it.
+Run `pnpm test:e2e` for a fresh static export and browser acceptance. Loopback behavior remains
+available with `pnpm dev`; hosted mode requires Dander's generated `/bootstrap.json` descriptor.
 
 ## Checks
 
-- Contract drift, ESLint, strict TypeScript, and Prettier checks passed.
-- Focused hosted-control and generated-contract suites passed 40 tests.
-- Full Vitest passed 61 files and 627 tests; Playwright passed all 10 browser journeys.
-- Static production build passed and exported `/`, `/auth/callback`, and `/signed-out`.
+- Contract drift, ESLint, strict TypeScript, Prettier, and static production build passed.
+- Full Vitest passed 63 files and 643 tests.
+- All 11 Playwright journeys passed, including hosted conflict/retry/restart acceptance.
 
 ## Decisions
 
-- Use `oidc-client-ts` 3.5.0 for discovery, code exchange, PKCE, and callback-state validation.
-- Request `api_audience` as OAuth `resource`; never request `offline_access` or accept refresh tokens.
-- Keep DRUFF-25 limited to identity/bootstrap; DRUFF-26 owns hosted project/graph behavior.
+- Reuse one persistence controller; the hosted client adds collection operations without a second store.
+- Retain mutation keys only for ambiguous retries; classify conflicts by operation and error code.
+- Complete verified callbacks in place so generic static navigation cannot discard memory-only auth.
 
 ## Remaining
 
-- Merge the focused protected PR and verify exact-main frontend, secret, and source-free-container CI.
-- Implement DRUFF-26 remote project/graph management against this authenticated boundary.
+- Merge the independently reviewed focused PR and verify exact-main CI.
 - Continue DRUFF-27 through DRUFF-29 in roadmap order.
 
 ## Review First
 
-- `src/features/hosted-control/HostedControlProvider.tsx`
-- `src/features/hosted-control/oidc-session.ts`
-- `src/features/hosted-control/bootstrap.ts`
+- `src/lib/persistence/graph-persistence.ts`
+- `src/features/graph-io/useGraphPersistence.ts`
+- `e2e/hosted-graph-management.spec.ts`

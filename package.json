@@ -14,7 +14,7 @@
     "contracts:check": "node scripts/generate-dander-contracts.mjs --check",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "pnpm build && playwright test"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
