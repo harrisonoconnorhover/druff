@@ -78,15 +78,26 @@ normalized because Dander writes its canonical model.
 
 ### Hosted interface
 
-The production Dockerfile exports the compiled static interface into a non-root, source-free image
-for Cloud Run. Node and the package tree remain only in the discarded build stage:
+The production Dockerfile exports the compiled static interface into a non-root, read-only,
+source-free Caddy image. Node and the package tree remain only in the discarded build stage. Every
+build emits `/druff-artifact.json`, which binds the complete static file inventory to the source
+revision, source epoch, version, and public Dander contract digest. A clean checkout uses its exact
+commit; a dirty checkout records `unrecorded` rather than falsely attributing local edits to HEAD:
 
 ```bash
-docker build --platform linux/amd64 --tag REGION-docker.pkg.dev/PROJECT/dander/druff:VERSION .
-docker push REGION-docker.pkg.dev/PROJECT/dander/druff:VERSION
+pnpm build
+node scripts/static-artifact.mjs --check --root out
+docker build --tag druff:local .
+docker run --rm --read-only --tmpfs /tmp --publish 8080:8080 druff:local
 ```
 
-Resolve the pushed digest and pass the immutable `...@sha256:...` reference to Dander as
+The exact image serves extensionless OIDC callback routes, `/healthz`, `/readyz`, immutable hashed
+assets, and the committed CSP/security policy. Protected CI builds linux/amd64 and linux/arm64 from
+two isolated source contexts, verifies their shared static layer plus per-platform SPDX/SLSA
+attestations, scans both runnable digests, and copies the reviewed index without rebuilding.
+
+After a separately authorized registry publication, resolve the pushed digest and pass the
+immutable `...@sha256:...` reference to Dander as
 `dander init --druff-container-image IMAGE`. Dander provisions the public interface as a
 scale-to-zero service with a dedicated identity that has no project roles.
 
@@ -99,17 +110,10 @@ The access token stays in browser memory; transaction state alone uses session s
 refuses browser refresh tokens, client secrets, token-bearing callback URLs, and Bearer requests
 outside the descriptor's Control API origin. Do not hand-author or embed credentials in this file.
 
-DRUFF-25 establishes that login and request boundary but does not yet replace the existing graph UI
-with the hosted project/graph APIs. Until the following remote-management tickets land, start the
-local authority from the project checkout and allow only the exact hosted origin:
-
-```bash
-dander graph serve --file /absolute/path/to/graph.yaml --origin https://YOUR_DRUFF_URL
-```
-
-Your browser may ask permission for the hosted page to access services on your local machine. Only
-after approval can Druff contact Dander at `127.0.0.1:8765`. Saving, validation, execution, and
-deployment preview keep their existing Dander-owned boundaries.
+Hosted mode uses the generated project, graph, catalog, validation, preview, run, status, log,
+cancel, and replay APIs. Dander remains authoritative for authorization and semantics; Druff
+discards stale or mismatched responses and never receives provider credentials or native payloads.
+When `/bootstrap.json` is absent, the existing local-loopback workspace remains unchanged.
 
 To enable the narrow operational controls for one graph that is already deployed, start Dander
 with its matching manifest pipeline and GCP project:
@@ -146,6 +150,7 @@ pnpm lint             # eslint
 pnpm typecheck        # tsc --noEmit
 pnpm format:check     # prettier --check .
 pnpm contracts:check # exact published Dander contract and generated-output drift
+pnpm test:artifact   # deterministic bundle, OCI association, and exact-promotion checks
 pnpm test             # vitest (unit/component)
 pnpm test:e2e         # playwright (canvas drag/drop/connect — not reliable under jsdom)
 pnpm build            # production build

@@ -2,36 +2,39 @@
 
 ## Finished
 
-- Added provider-neutral hosted run start and normalized two-second status polling.
-- Added one bounded sanitized log page plus capability-gated cancel and replay.
-- Retained idempotency keys across ambiguous outcomes and rejected mismatched run identities.
-- Serialized polling and log reads against mutations while preserving temporary-outage recovery.
-- Extended the hosted browser journey through run, logs, replay, and synthetic service restart.
+- Added a deterministic, content-addressed static export with exact source and contract provenance.
+- Added a vulnerability-clean scratch/Caddy runtime with callback routes, probes, and security policy.
+- Added multi-platform OCI, SBOM/SLSA association, reproducibility, and exact-promotion verification.
+- Added exact-image runtime checks plus pre-promotion vulnerability and secret scans in protected CI.
+- Extended the full hosted browser journey through cancellation, replay, success, and restart.
 
 ## Try It
 
-Run `pnpm test:e2e` for fresh browser acceptance. In hosted mode, open a clean saved graph, choose
-**Start run**, watch normalized status, then load logs or use allowed cancel/replay controls.
+Run `pnpm test:artifact`, then `pnpm build` and
+`node scripts/static-artifact.mjs --check --root out`. Build the Dockerfile and serve port 8080 with
+a read-only root plus a `/tmp` tmpfs to exercise the exact static runtime.
 
 ## Checks
 
-- Contract drift, strict TypeScript, ESLint, Prettier, and the production build passed.
-- Full Vitest passed 66 files and 669 tests.
-- All 11 Playwright journeys passed, including hosted run, logs, replay, and restart coverage.
+- Artifact tests, Actionlint, strict TypeScript, ESLint, Prettier, and repeated production builds pass.
+- Local amd64/arm64 OCI inspection found one exact shared layer plus per-platform SPDX/SLSA; exact
+  raw-index promotion passed. Local read-only Caddy route/header/export verification passed.
+- Full Vitest passes 66 files/669 tests and all 11 Playwright journeys pass with the committed CSP;
+  protected PR run `31802260747` passed both exact runnable-digest scans and local promotion.
 
 ## Decisions
 
-- Require returned status and mutation DTOs to correlate to the addressed run and operation.
-- Keep a mutation key until a definitive response validates; malformed success remains ambiguous.
-- Mutually exclude log reads and mutations; suspend polling until each mutation settles.
+- Keep Next static export; Caddy serves files only and adds no application runtime.
+- Resolve provenance once: clean HEAD is exact; dirty local sources are explicitly `unrecorded`.
+- Treat public registry publication as later D9 work; DRUFF-29 promotes only in disposable local CI.
 
 ## Remaining
 
-- Open and merge the protected PR, then verify exact-main CI.
-- Continue DRUFF-29 in roadmap order.
+- Merge the protected PR, then verify exact-main CI and record its evidence.
+- Continue D6 in roadmap order; do not publish a public Druff image without separate approval.
 
 ## Review First
 
-- `src/features/hosted-control/useHostedRunControls.ts`
-- `src/features/hosted-control/HostedRunControlsBar.tsx`
-- `e2e/hosted-graph-management.spec.ts`
+- `.github/workflows/ci.yml`
+- `scripts/oci-artifact.mjs`
+- `Dockerfile` and `Caddyfile`

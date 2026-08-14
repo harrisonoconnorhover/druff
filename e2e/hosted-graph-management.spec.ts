@@ -4,6 +4,7 @@ import { createReadStream, existsSync, mkdtempSync, readFileSync, rmSync, statSy
 import { createServer, type Server } from "node:https";
 import { tmpdir } from "node:os";
 import { extname, join, resolve } from "node:path";
+import staticSecurityHeaders from "../artifact/static-security-headers.json";
 import {
   DANDER_CONTRACT_BUNDLE_ID,
   DANDER_CONTRACT_BUNDLE_SHA256,
@@ -100,12 +101,14 @@ function errorEnvelope(code: string, message: string) {
 }
 
 function runStatus(run: StoredRun) {
+  const terminal = run.state === "succeeded" || run.state === "canceled";
   return {
     run_id: run.runId,
     state: run.state,
-    stage: run.state === "succeeded" ? "complete" : "execute",
+    stage:
+      run.state === "succeeded" ? "complete" : run.state === "canceled" ? "canceled" : "execute",
     started_at: "2026-08-14T11:00:00Z",
-    finished_at: run.state === "succeeded" ? "2026-08-14T11:00:04Z" : null,
+    finished_at: terminal ? "2026-08-14T11:00:04Z" : null,
     endpoints: 1,
     extracted: run.state === "succeeded" ? 2 : 0,
     affected: run.state === "succeeded" ? 2 : 0,
@@ -115,8 +118,8 @@ function runStatus(run: StoredRun) {
     failure_code: null,
     failure_summary: null,
     can_cancel: run.state === "queued" || run.state === "running",
-    can_replay: run.state === "succeeded",
-    logs_available: run.state === "running" || run.state === "succeeded",
+    can_replay: terminal,
+    logs_available: run.state === "running" || terminal,
   };
 }
 
@@ -129,6 +132,10 @@ function corsHeaders() {
     "Access-Control-Expose-Headers": "ETag, X-Correlation-ID",
     "Content-Type": "application/json",
   };
+}
+
+function staticHeaders(cacheControl = staticSecurityHeaders["cache-control"]) {
+  return { ...staticSecurityHeaders, "cache-control": cacheControl };
 }
 
 async function startDruffHttpsProxy(): Promise<{ close(): Promise<void> }> {
@@ -176,6 +183,7 @@ async function startDruffHttpsProxy(): Promise<{ close(): Promise<void> }> {
           compatibility: { minimum_druff_contract: "1.0.0", maximum_druff_contract: "1.x" },
         });
         outgoing.writeHead(200, {
+          ...staticHeaders(),
           "Content-Type": "application/json",
           "Content-Length": Buffer.byteLength(body),
           "Cache-Control": "no-store",
@@ -195,14 +203,18 @@ async function startDruffHttpsProxy(): Promise<{ close(): Promise<void> }> {
         !existsSync(filePath) ||
         !statSync(filePath).isFile()
       ) {
-        outgoing.writeHead(404);
+        outgoing.writeHead(404, staticHeaders());
         outgoing.end();
         return;
       }
       outgoing.writeHead(200, {
+        ...staticHeaders(
+          relative.startsWith("_next/static/")
+            ? "public, max-age=31536000, immutable"
+            : staticSecurityHeaders["cache-control"],
+        ),
         "Content-Type": contentType(filePath),
         "Content-Length": statSync(filePath).size,
-        "Cache-Control": "no-store",
       });
       createReadStream(filePath).pipe(outgoing);
     },
@@ -493,8 +505,9 @@ function createControlService(durable: DurableControlState) {
         return;
       }
       run.polls += 1;
-      if (run.polls === 1) run.state = "running";
-      if (run.polls >= 2) run.state = "succeeded";
+      if (run.state === "canceling") run.state = "canceled";
+      else if (run.polls === 1) run.state = "running";
+      else if (run.polls >= 2 && run.state === "running") run.state = "succeeded";
       await json(route, 200, runStatus(run));
       return;
     }
@@ -801,11 +814,18 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
   });
   await page.getByRole("button", { name: "Load bounded logs" }).click();
   await expect(page.getByText("Synthetic run is progressing safely.")).toBeVisible();
-  await expect(normalizedRun).toContainText("Run run-synthetic-1: succeeded", {
+  await page.getByRole("button", { name: "Cancel run" }).click();
+  await expect(
+    page.getByText("Dander acknowledged cancellation; status polling continues."),
+  ).toBeVisible();
+  await expect(normalizedRun).toContainText("Run run-synthetic-1: canceled", {
     timeout: 5_000,
   });
   await page.getByRole("button", { name: "Replay run" }).click();
   await expect(page.getByText("Dander acknowledged replay as run-synthetic-2.")).toBeVisible();
+  await expect(normalizedRun).toContainText("Run run-synthetic-2: succeeded", {
+    timeout: 7_000,
+  });
 
   const source = page.locator(".react-flow__node", { hasText: "Server edit" });
   await source.click();
