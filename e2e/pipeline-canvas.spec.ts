@@ -12,6 +12,7 @@ function canvasNode(page: Page, name: string) {
 test("renders the pipeline canvas with its placeholder nodes", async ({ page }) => {
   await page.goto("/");
 
+  await expect(page.getByText("Loopback/offline mode", { exact: true })).toBeVisible();
   await expect(canvasNode(page, "Greenhouse")).toBeVisible();
   await expect(canvasNode(page, "Normalize fields")).toBeVisible();
   await expect(canvasNode(page, "BigQuery (SCD1)")).toBeVisible();
