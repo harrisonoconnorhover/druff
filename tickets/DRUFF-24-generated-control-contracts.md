@@ -26,7 +26,7 @@ Manual graph and API Zod definitions have drifted from Dander and cannot remain 
 Presentation helpers may remain handwritten, but every network/document boundary parses generated
 runtime validators. Do not generate from a sibling checkout or duplicate Dander semantics.
 
-The consumer pins the public `dander-platform==0.9.0rc18` wheel and verifies its wheel digest,
+The consumer pins the public `dander-platform==0.9.0rc19` wheel and verifies its wheel digest,
 manifest inventory, per-file hashes, and whole-bundle digest before generation. Ajv Draft 2020-12
 standalone validators enforce the exact published schemas without coercion or mutation; generated
 TypeScript types come from the same files. A small post-validation graph projection applies
@@ -38,11 +38,12 @@ endpoints; deployment preview and both catalogs already match and now use genera
 
 ## Implementation Notes
 
-- Pinned wheel SHA256: `4500b32451c02b6331a337b6d38eb96cc49a29838b6e3ea5a2b87b9daf85406c`.
-- Pinned bundle SHA256: `344ef5ff2d685d5bedf7a1ddb119a42a6de08d90f285dc0a981e79c55452c1ed`.
+- Pinned wheel SHA256: `8f1336786e46471a2048d6250008ad176ff3b62d047020872659304c7d2db552`.
+- Pinned bundle SHA256: `695791dfda6058d68453d9e146146d5cdda1439d86c40a7ec249cb4e14a12be3`.
 - CI runs `pnpm contracts:check`; the generator compares fresh temporary output byte-for-byte.
-- Published fixtures cover every root DTO plus extensions, typed configs, triggers, cursors,
-  visuals, four transformation kinds, four operations, five write modes, and `copy` transport.
+- Published fixtures cover every root DTO, including bootstrap, project/graph collections and
+  resources, graph creation, and run collections, plus extensions, typed configs, triggers,
+  cursors, visuals, transformations, operations, writer modes, and transports.
 
 ## Review Log
 
@@ -56,3 +57,9 @@ retain unmatched local/GCP response schemas instead of accidentally beginning D2
 Found one remaining handwritten `/v1/connectors` boundary. Replaced it with the generated connector
 catalog validator and generated types, retained only binding checks and UI projection logic, and
 proved unknown-field rejection plus non-mutating optional-field presentation defaults.
+
+### 2026-08-14 — public RC19 contract refresh
+
+Refreshed the immutable artifact pin from RC18 to RC19 after Dander publication evidence merged.
+The generated boundary now includes Control bootstrap, project list, graph create/page/resource,
+and run page without beginning OIDC, remote API, or UI implementation.
