@@ -38,7 +38,7 @@ export function buildOidcSettings(
     redirect_uri: descriptor.redirect_uri,
     post_logout_redirect_uri: descriptor.logout_uri,
     response_type: "code",
-    response_mode: "query",
+    response_mode: "fragment",
     scope: "openid",
     resource: descriptor.api_audience,
     disablePKCE: false,
@@ -125,10 +125,10 @@ export class HostedOidcSession {
 
   async beginSignOut(): Promise<void> {
     // Clear the in-memory User before building the end-session URL so oidc-client-ts cannot put
-    // an ID-token hint in that URL. The provider receives only client_id, state, and the reviewed
-    // post-logout callback.
+    // an ID-token hint in that URL. Omitting optional logout state also keeps the managed-hosting
+    // callback free of query data while retaining the reviewed fixed post-logout route.
     await this.manager.removeUser();
-    await this.manager.signoutRedirect({ state: {} });
+    await this.manager.signoutRedirect();
   }
 
   async completeSignOut(callbackUrl: string): Promise<void> {

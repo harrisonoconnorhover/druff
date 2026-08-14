@@ -106,9 +106,12 @@ Druff labels and preserves the existing loopback/offline workspace. When it is p
 the public descriptor generated from Dander's hosted OIDC deployment input: Druff verifies the
 exact contract digest and compatibility range, requires the fixed `/auth/callback` and
 `/signed-out` routes, and gates the workspace behind external authorization-code + PKCE login.
-The access token stays in browser memory; transaction state alone uses session storage. Druff
-refuses browser refresh tokens, client secrets, token-bearing callback URLs, and Bearer requests
-outside the descriptor's Control API origin. Do not hand-author or embed credentials in this file.
+Authorization responses use the URL fragment so managed HTTP request logs never receive the code
+or sign-in state. The access token stays in browser memory; sign-in transaction state alone uses
+session storage. Logout clears that memory before a token-free, state-free provider redirect.
+Druff refuses browser refresh tokens, client secrets, token-bearing callback URLs, and Bearer
+requests outside the descriptor's Control API origin. Do not hand-author or embed credentials in
+this file.
 
 Hosted mode uses the generated project, graph, catalog, validation, preview, run, status, log,
 cancel, and replay APIs. Dander remains authoritative for authorization and semantics; Druff

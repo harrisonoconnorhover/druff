@@ -668,10 +668,13 @@ async function installHostedRoutes(page: Page, durable: DurableControlState) {
       nonce = url.searchParams.get("nonce") ?? "";
       const state = url.searchParams.get("state")!;
       const redirect = url.searchParams.get("redirect_uri")!;
+      if (url.searchParams.get("response_mode") !== "fragment") {
+        throw new Error("Hosted OIDC acceptance requires fragment response mode.");
+      }
       await route.fulfill({
         status: 200,
         contentType: "text/html",
-        body: `<script>location.replace(${JSON.stringify(`${redirect}?code=e2e-code&state=${encodeURIComponent(state)}`)})</script>`,
+        body: `<script>location.replace(${JSON.stringify(`${redirect}#code=e2e-code&state=${encodeURIComponent(state)}`)})</script>`,
       });
       return;
     }

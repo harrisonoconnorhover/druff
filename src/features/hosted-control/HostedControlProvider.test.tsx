@@ -92,11 +92,11 @@ describe("hosted-control presentation boundary", () => {
       apiOrigin: "https://control.example.test",
     });
     const original =
-      "http://localhost:3000/auth/callback?code=authorization-code&state=stored-state";
+      "http://localhost:3000/auth/callback#code=authorization-code&state=stored-state";
     window.history.replaceState(
       null,
       "",
-      "/auth/callback?code=authorization-code&state=stored-state",
+      "/auth/callback#code=authorization-code&state=stored-state",
     );
 
     const callback = render(
@@ -145,7 +145,7 @@ describe("hosted-control presentation boundary", () => {
       }),
     );
     // Reuse the verified in-memory callback handoff to enter the authenticated state.
-    window.history.replaceState(null, "", "/auth/callback?code=code&state=state");
+    window.history.replaceState(null, "", "/auth/callback#code=code&state=state");
     const callback = render(
       <HostedControlProvider>
         <OidcCallbackPage kind="signin" />

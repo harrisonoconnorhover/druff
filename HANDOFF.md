@@ -2,39 +2,38 @@
 
 ## Finished
 
-- Added a deterministic, content-addressed static export with exact source and contract provenance.
-- Added a vulnerability-clean scratch/Caddy runtime with callback routes, probes, and security policy.
-- Added multi-platform OCI, SBOM/SLSA association, reproducibility, and exact-promotion verification.
-- Added exact-image runtime checks plus pre-promotion vulnerability and secret scans in protected CI.
-- Extended the full hosted browser journey through cancellation, replay, success, and restart.
+- Moved OIDC authorization-code callbacks from query parameters to the browser fragment.
+- Kept the one-shot Strict Mode callback capture and immediate browser-history scrub.
+- Made provider logout token-free and state-free after clearing the in-memory user.
+- Added real oidc-client-ts request coverage and recorded the managed-hosting boundary.
 
 ## Try It
 
-Run `pnpm test:artifact`, then `pnpm build` and
-`node scripts/static-artifact.mjs --check --root out`. Build the Dockerfile and serve port 8080 with
-a read-only root plus a `/tmp` tmpfs to exercise the exact static runtime.
+Run the focused OIDC session and hosted-provider tests. The authorize URL should request
+`response_mode=fragment`; the end-session URL should contain neither state nor tokens.
 
 ## Checks
 
-- Artifact tests, Actionlint, strict TypeScript, ESLint, Prettier, and repeated production builds pass.
-- Local amd64/arm64 OCI inspection found one exact shared layer plus per-platform SPDX/SLSA; exact
-  raw-index promotion passed. Local read-only Caddy route/header/export verification passed.
-- Full Vitest passes 66 files/669 tests and all 11 Playwright journeys pass with the committed CSP;
-  protected PR run `31802260747` passed both exact runnable-digest scans and local promotion.
+- Focused Vitest passed 9 tests; full Vitest passed 66 files and 669 tests.
+- Contract drift, typecheck, ESLint, Prettier, and the deterministic production build passed.
+- Full Playwright passed all 11 journeys after its fake issuer was corrected to return a fragment.
+- Independent completion review passed with no material finding.
+- No dependency, generated contract, API client, graph, run-control, or container change is included.
 
 ## Decisions
 
-- Keep Next static export; Caddy serves files only and adds no application runtime.
-- Resolve provenance once: clean HEAD is exact; dirty local sources are explicitly `unrecorded`.
-- Treat public registry publication as later D9 work; DRUFF-29 promotes only in disposable local CI.
+- Use the standard fragment response mode so managed request logs never receive sign-in code/state.
+- Omit optional logout state after local access is cleared instead of adding a second parser or log exclusion.
+- Keep active/rollback image trees identical while truthful commit labels produce distinct digests.
 
 ## Remaining
 
-- Merge the protected PR, then verify exact-main CI and record its evidence.
-- Continue D6 in roadmap order; do not publish a public Druff image without separate approval.
+- Merge the focused protected PR and verify exact-main CI.
+- Build exact active/rollback images only after protected merge and exact-main CI.
+- Continue the GCP Terraform profile separately; do not claim provider qualification here.
 
 ## Review First
 
-- `.github/workflows/ci.yml`
-- `scripts/oci-artifact.mjs`
-- `Dockerfile` and `Caddyfile`
+- `src/features/hosted-control/oidc-session.ts`
+- `src/features/hosted-control/oidc-session.test.ts`
+- `src/features/hosted-control/HostedControlProvider.test.tsx`
