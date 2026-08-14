@@ -90,8 +90,18 @@ Resolve the pushed digest and pass the immutable `...@sha256:...` reference to D
 `dander init --druff-container-image IMAGE`. Dander provisions the public interface as a
 scale-to-zero service with a dedicated identity that has no project roles.
 
-The hosted page is still only a browser shell: it stores no graphs or credentials and exposes no
-Dander API. Start the authority from the project checkout and allow only the exact hosted origin:
+At startup the static page checks only same-origin `/bootstrap.json`. When that file is absent,
+Druff labels and preserves the existing loopback/offline workspace. When it is present, it must be
+the public descriptor generated from Dander's hosted OIDC deployment input: Druff verifies the
+exact contract digest and compatibility range, requires the fixed `/auth/callback` and
+`/signed-out` routes, and gates the workspace behind external authorization-code + PKCE login.
+The access token stays in browser memory; transaction state alone uses session storage. Druff
+refuses browser refresh tokens, client secrets, token-bearing callback URLs, and Bearer requests
+outside the descriptor's Control API origin. Do not hand-author or embed credentials in this file.
+
+DRUFF-25 establishes that login and request boundary but does not yet replace the existing graph UI
+with the hosted project/graph APIs. Until the following remote-management tickets land, start the
+local authority from the project checkout and allow only the exact hosted origin:
 
 ```bash
 dander graph serve --file /absolute/path/to/graph.yaml --origin https://YOUR_DRUFF_URL
