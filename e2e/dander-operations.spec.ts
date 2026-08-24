@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const ORIGIN = "http://localhost:3000";
+const ORIGIN = `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`;
 const REVISION = '"revision-1"';
 const GRAPH = { name: "greenhouse-jobs", nodes: [], edges: [] };
 const BINDING = {
