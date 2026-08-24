@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const ORIGIN = "http://localhost:3000";
+const ORIGIN = `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3000"}`;
 const HEADERS = {
   "Access-Control-Allow-Origin": ORIGIN,
   "Content-Type": "application/json",

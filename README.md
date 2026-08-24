@@ -59,11 +59,26 @@ pnpm dev              # http://localhost:3000
 
 Contract output is generated only from the pinned public
 `dander-platform==0.9.0rc19` wheel on PyPI. The generator verifies the wheel, manifest, every file,
-and the whole bundle before writing output; it never reads a sibling Dander checkout.
+and the whole bundle before writing output; it never reads a sibling Dander checkout. Current
+protected Dander RC32 retains the exact same `io.dander.control.contracts/v1` bundle bytes, so the
+published pin remains the authority instead of being relabeled from an unpublished checkout.
 
 ```bash
 pnpm contracts:check     # re-generate in a temporary directory and fail on committed drift
 pnpm contracts:generate  # intentionally refresh committed output after updating the artifact pin
+```
+
+Release acceptance can additionally exercise Druff's production graph and operation clients
+against a locally running current Dander Control API:
+
+```bash
+# In the protected Dander checkout:
+uv run dander control serve --ephemeral --project demo-project --port 8770
+
+# In Druff:
+DANDER_CONTROL_URL=http://127.0.0.1:8770 \
+DANDER_EXPECTED_VERSION=0.9.0rc32 \
+pnpm test:current-dander
 ```
 
 In a second terminal, select the graph file Dander may expose:
