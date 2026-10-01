@@ -4,13 +4,15 @@ Front-end companion to **[Dander](https://github.com/harrisonoconnorhover/dander
 editor for Dander's canonical
 `PipelineGraph` files (drag/drop nodes, wire connections, configure sources/transforms/writes).
 
-Druff opens and saves one graph file through Dander's localhost API. Dander owns parsing,
-validation, conflict detection, and atomic filesystem writes. When the operator binds that graph
-to one manifest pipeline, Druff can also validate it, manually run its already-deployed Cloud Run
-job, and show compact execution/run-ledger status. A version-1 `dander.yaml` can still be imported
-as a detached, one-way visualization. When Dander explicitly enables it with complete operator
-inputs, Druff can also request a source-free candidate and display its non-applyable Terraform
-plan; Druff never writes the manifest or applies infrastructure.
+Druff connects to Dander's hosted Control API or its single-file localhost API. Hosted users sign
+in, choose a graph, configure it on the canvas, review unsaved changes, save, run and inspect the
+recorded outcome. Dander owns parsing, validation, revision conflicts, storage and execution.
+
+In localhost mode, an operator can bind the open graph to one manifest pipeline to validate it,
+run its already-deployed Cloud Run job and inspect the run ledger. A version-1 `dander.yaml` can
+still be imported as a detached, one-way visualization. When Dander explicitly enables it with
+complete operator inputs, Druff can also request a source-free candidate and display its
+non-applyable Terraform plan; Druff never writes the manifest or applies infrastructure.
 
 When that manifest pins installed connector plugins, Druff discovers their presentation-safe
 descriptors from Dander and adds them to the palette dynamically. The first dynamic connector is
@@ -31,7 +33,7 @@ read-only instead of being rewritten.
 See `CLAUDE.md` and `steering/00-project-overview.md` for the full picture (why this exists, the
 module map, decision log). The accepted documentation-only Druff 1.0 architecture checkpoint is
 in `steering/03-control-plane-roadmap.md`. Druff's DTOs now come from Dander's published contract
-bundle; hosted graph storage, identity, and run APIs remain later phases.
+bundle; hosted graph storage, identity, and run controls are implemented by the static client.
 
 ## Stack
 
@@ -57,11 +59,13 @@ pnpm install
 pnpm dev              # http://localhost:3000
 ```
 
-Contract output is generated only from the pinned public
-`dander-platform==0.9.0rc19` wheel on PyPI. The generator verifies the wheel, manifest, every file,
-and the whole bundle before writing output; it never reads a sibling Dander checkout. Current
-protected Dander RC32 retains the exact same `io.dander.control.contracts/v1` bundle bytes, so the
-published pin remains the authority instead of being relabeled from an unpublished checkout.
+Contract output is generated only from the pinned
+[`dander-platform==0.9.0rc33` GitHub integration-candidate wheel](https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc33/dander_platform-0.9.0rc33-py3-none-any.whl),
+SHA-256 `2dd84610ab96093944d41f21706e410c30e83b6c92f719d1aa50ec0c7841661f`.
+The generator verifies the wheel, manifest, every file, and the whole bundle before writing output;
+it never reads a sibling Dander checkout. This client requires the matching RC33 bundle. The
+GitHub integration candidate does not promote Dander's public PyPI RC20 beta or qualify additional
+provider profiles.
 
 ```bash
 pnpm contracts:check     # re-generate in a temporary directory and fail on committed drift
@@ -72,12 +76,12 @@ Release acceptance can additionally exercise Druff's production graph and operat
 against a locally running current Dander Control API:
 
 ```bash
-# In the protected Dander checkout:
-uv run dander control serve --ephemeral --project demo-project --port 8770
+# In an environment installed from the pinned RC33 wheel above (not the RC20 PyPI beta):
+dander control serve --ephemeral --project demo-project --port 8770
 
 # In Druff:
 DANDER_CONTROL_URL=http://127.0.0.1:8770 \
-DANDER_EXPECTED_VERSION=0.9.0rc32 \
+DANDER_EXPECTED_VERSION=0.9.0rc33 \
 pnpm test:current-dander
 ```
 
@@ -132,6 +136,43 @@ Hosted mode uses the generated project, graph, catalog, validation, preview, run
 cancel, and replay APIs. Dander remains authoritative for authorization and semantics; Druff
 discards stale or mismatched responses and never receives provider credentials or native payloads.
 When `/bootstrap.json` is absent, the existing local-loopback workspace remains unchanged.
+
+The hosted workspace guides one saved graph through **Choose → Configure → Review → Run → Results**:
+
+1. Browse a project and open a graph, or create a graph from the current canvas draft. Configure
+   source and output nodes in the existing inspector. Connections and deployed environments still
+   belong to Dander's operator configuration.
+2. Choose **Preview changes** to compare the unsaved draft with its saved revision. The review
+   lists changed nodes and connections, downstream outputs, and the write behavior of every
+   output a full run will write. This comparison does not query rows or estimate a bill.
+3. Choose **Save reviewed changes**, then **Run reviewed graph**. Edits invalidate the review;
+   Dander checks the saved revision again before accepting execution. Saving alone does not run.
+4. Read the recorded outcome and suggested next action. Missing result measurements stay
+   **Unknown**, including server-default counters before a result document exists. Advanced
+   validation, deployment preview, logs, cancellation and replay remain available.
+5. Expand **Repair selected output dates** to preview a saved graph's half-open UTC date window
+   (first date included, end date excluded). A compatible environment can rebuild those output
+   partitions from retained raw warehouse data. This does not fetch historical source records or
+   move normal ingestion progress. Dander determines eligibility and publishes the selected
+   ranges atomically; unsupported graphs/environments return an explicit explanation.
+
+Date repair is an experimental producer capability until its stated qualification gates are met.
+A generated client and its Dander deployment must use the same published contract bundle. Browser
+journey tests use synthetic HTTP/OIDC fixtures; they do not establish live provider success.
+
+To inspect an already-completed operator-owned native repair through Druff's real HTTP client,
+without starting another workload:
+
+```bash
+DANDER_CONTROL_URL=http://127.0.0.1:8875 \
+DANDER_REPAIR_PROJECT=repair-proof \
+DANDER_REPAIR_GRAPH=repair-events \
+DANDER_REPAIR_RUN_ID=REPLACE_WITH_ACCEPTED_RUN_ID \
+pnpm test:repair-observation
+```
+
+This observation verifies the exact contract, saved graph, repair preview, status and explanation.
+The operator's separate provider evidence must establish warehouse results, watermarks and cleanup.
 
 To enable the narrow operational controls for one graph that is already deployed, start Dander
 with its matching manifest pipeline and GCP project:

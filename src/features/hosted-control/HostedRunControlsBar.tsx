@@ -9,23 +9,27 @@ export function HostedRunControlsBar({
   capabilities,
   controls,
   onReload,
+  advanced = false,
 }: {
   capabilities: CapabilitiesResponse;
   controls: HostedRunControls;
   onReload(): Promise<void>;
+  advanced?: boolean;
 }) {
   return (
     <div className="border-b bg-indigo-50/60 px-4 py-2 text-xs text-slate-800 dark:bg-indigo-950/20 dark:text-slate-200">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">Hosted runs</span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!controls.canStart}
-          onClick={() => void controls.start()}
-        >
-          <Play /> Start run
-        </Button>
+        {!advanced ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!controls.canStart}
+            onClick={() => void controls.start()}
+          >
+            <Play /> Start run
+          </Button>
+        ) : null}
         <Button
           variant="outline"
           size="sm"
@@ -71,7 +75,9 @@ export function HostedRunControlsBar({
         </p>
       ) : null}
 
-      {controls.run ? <RunSummary run={controls.run} origin={controls.origin} /> : null}
+      {controls.run && !advanced ? (
+        <RunSummary run={controls.run} origin={controls.origin} />
+      ) : null}
 
       {controls.logs ? (
         <div className="mt-2 rounded-md border bg-background p-3">
@@ -130,12 +136,12 @@ function RunSummary({
         </div>
       ) : null}
       <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-        <span>Endpoints: {run.endpoints ?? 0}</span>
-        <span>Extracted: {run.extracted ?? 0}</span>
-        <span>Affected: {run.affected ?? 0}</span>
-        <span>Models: {run.models ?? 0}</span>
-        <span>Assertions: {run.assertions ?? 0}</span>
-        <span>Assets: {run.assets ?? 0}</span>
+        <span>Endpoints: {run.result_schema ? (run.endpoints ?? "Unknown") : "Unknown"}</span>
+        <span>Extracted: {run.result_schema ? (run.extracted ?? "Unknown") : "Unknown"}</span>
+        <span>Affected: {run.result_schema ? (run.affected ?? "Unknown") : "Unknown"}</span>
+        <span>Models: {run.result_schema ? (run.models ?? "Unknown") : "Unknown"}</span>
+        <span>Assertions: {run.result_schema ? (run.assertions ?? "Unknown") : "Unknown"}</span>
+        <span>Assets: {run.result_schema ? (run.assets ?? "Unknown") : "Unknown"}</span>
       </div>
       {run.failure_summary ? (
         <p className="mt-1 text-destructive">

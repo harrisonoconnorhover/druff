@@ -2,34 +2,39 @@
 
 ## Finished
 
-- Merged current-Dander compatibility in PR #23 and passed exact-main CI at `34acec00dfc9aafe93a62b1e3ed2b1b807a66487`.
-- Exercised Druff's production clients against protected Dander RC32 at `33801213ee8c1bab78b8847a4b86bd9b4b8d1c63`.
-- Built and retained exact active and rollback multi-platform OCI artifacts with SBOM and provenance attestations.
-- Verified both artifacts are source-free, non-root, read-only, route-complete, and clean under the protected Trivy policy.
+- Added a hosted Choose → Configure → Review → Run → Results journey with one primary action and existing technical controls under advanced details.
+- Bound unsaved change previews to the draft, graph address and revision; running requires the reviewed content hash to match the saved graph.
+- Added recorded outcome explanations, missing-measurement handling and explicit retained-raw date repair with date/revision invalidation and safe retry keys.
+- Preserved loopback editing, OIDC/capability gates, graph conflicts, logs, cancellation and replay; corrected the existing font variable and toolbar overflow.
+- Documented the experimental repair boundary and added a read-only production-client observation test for an already-completed native repair.
 
 ## Try It
 
-Resolve the retained artifacts with `oras resolve --oci-layout /Users/harrison/.codex/artifacts/druff/2026-08-24-release/druff-active-34acec00dfc9.oci.tar:active` or the matching `druff-rollback-55f1565f3cb8.oci.tar:rollback`. For Control API acceptance, start current Dander and run `DANDER_CONTROL_URL=http://127.0.0.1:8770 DANDER_EXPECTED_VERSION=0.9.0rc32 pnpm test:current-dander`.
+In hosted mode, browse a graph, edit its source/output configuration, choose **Preview changes**, then **Save reviewed changes** and **Run reviewed graph**. Expand **Repair selected output dates** for an eligible saved graph. Existing operator configuration still supplies connections and deployed environments.
+
+For real HTTP contract checks, start an ephemeral Dander Control API and use `DANDER_CONTROL_URL=... DANDER_EXPECTED_VERSION=... pnpm test:current-dander`. For an accepted native repair, use the explicit project, graph and run ID variables documented in README with `pnpm test:repair-observation`.
 
 ## Checks
 
-- PR #23 and exact-main run `32787930579` passed Frontend quality, Source-free container, and Secret scan.
-- Current-Dander acceptance, contract/artifact checks, lint, types, format, 669 unit tests, and 11 Playwright journeys passed.
-- Both exact artifacts passed reproducible-layer, promotion, archive, amd64/arm64 runtime/export, and Trivy 0.70.0 HIGH/CRITICAL plus secret checks with zero findings.
+- Passed 685 unit/component tests, nine artifact checks, TypeScript, ESLint, Prettier and static build against the verified published RC33 wheel; independent contract regeneration reports no drift.
+- Passed all 11 Playwright journeys, including reviewed save/run, date invalidation, repair submission and existing conflict/retry behavior. Browser OIDC/API responses are synthetic.
+- Passed production-client real HTTP acceptance against an ephemeral Control API installed from the published RC33 wheel: exact hashes, canvas round trip, unsaved preview, save, stale preview rejection and truthful unsupported execution.
+- Visually inspected the synthetic browser screenshot; font and horizontal overflow defects are corrected. A focused test also confirms late explanations cannot replace newer run status.
 
 ## Decisions
 
-- Active is merge commit `34acec00dfc9`; rollback is green PR head `55f1565f3cb8`; both share tree `ce829147ef3b`.
-- Retain the public RC19 contract pin because protected RC32's bundle is byte-identical.
-- Keep the release artifacts as local OCI archives; public registry publication remains a separate external action.
+- Dander remains the only semantic/execution authority; no provider client or new auth infrastructure was added.
+- Missing result documents display Unknown instead of interpreting default counters as measured zeros.
+- Date repair rebuilds output partitions from retained raw data; it is explicitly experimental and does not recover historical source records.
 
 ## Remaining
 
-- No Druff implementation or release-readiness gap remains.
-- Publish or deploy the retained artifact only when a destination is explicitly approved.
+- Candidate version is `0.2.0-rc.1`, paired with the exact published RC33 wheel and contract digest in README. This does not promote the RC20 public beta.
+- Observe the separately authorized native repair once its accepted run ID is available; no provider workload was launched by Druff tests.
+- Commit the coordinated client/generator changes, then complete protected PR, exact-main checks and authorized release steps.
 
 ## Review First
 
-- `tickets/DRUFF-31-current-dander-release-acceptance.md`
-- `integration/current-dander-control.test.ts`
-- `/Users/harrison/.codex/artifacts/druff/2026-08-24-release/records`
+- `src/features/hosted-control/useGraphChangePreview.ts` and `DateRepairPanel.tsx`
+- `src/features/hosted-control/control-api.ts` and `integration/`
+- `tickets/DRUFF-32-guided-pipeline-journey.md`

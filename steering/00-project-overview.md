@@ -80,6 +80,14 @@ execute in the browser; Druff produces/edits the pipeline-graph YAML/JSON and Da
 
 Append newest at top. Format: `- YYYY-MM-DD — decision — rationale`.
 
+- 2026-10-01 — **One reviewed journey uses the existing Control boundary** — Hosted authoring
+  presents one primary action and keeps technical controls under advanced details. Unsaved
+  change review is bound to the exact draft and saved revision; a saved content hash must match
+  before the primary run action is available. Date repair is a separate, explicitly scoped
+  retained-raw output operation, with dates and revision invalidating stale previews. Dander
+  owns eligibility, execution, atomic output publication and recorded explanations; Druff neither
+  reimplements these semantics nor guesses missing result counts. See DRUFF-32.
+
 - 2026-08-13 — **Druff 1.0 remains a static generated client of one Dander Control API** — Dander
   keeps graph and operation semantics, authorization, storage, execution, providers, state, and
   deployment. Druff uses an external-OIDC public client with authorization code plus PKCE and

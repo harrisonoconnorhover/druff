@@ -6,24 +6,13 @@
  * Do not edit by hand; run `pnpm contracts:generate`.
  */
 
-export type Id = string;
-/**
- * @maxItems 100
- */
-export type Projects = ProjectSummaryResponse[];
+export type EndDate = string;
+export type StartDate = string;
 
 /**
- * The bounded logical projects configured for this Dander installation.
+ * UTC calendar dates: start is inclusive and end is exclusive.
  */
-export interface ProjectListResponse {
-  projects: Projects;
-}
-/**
- * One configured logical project, never a provider project payload.
- *
- * This interface was referenced by `ProjectListResponse`'s JSON-Schema
- * via the `definition` "ProjectSummaryResponse".
- */
-export interface ProjectSummaryResponse {
-  id: Id;
+export interface GraphRepairWindow {
+  end_date: EndDate;
+  start_date: StartDate;
 }

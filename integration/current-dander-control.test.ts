@@ -13,6 +13,7 @@ import {
   type GraphAddress,
   type GraphDocument,
 } from "@/lib/persistence/graph-persistence";
+import { canvasToGraph, graphToCanvas } from "@/lib/pipeline-graph";
 import { EXAMPLE_GRAPH } from "@/lib/pipeline-graph/__fixtures__/example-graph";
 
 const configuredUrl = process.env.DANDER_CONTROL_URL;
@@ -79,18 +80,42 @@ describe("current protected Dander Control API", () => {
       graph: EXAMPLE_GRAPH,
     });
 
+    const canvas = graphToCanvas(opened.graph);
+    const unchangedDraft = canvasToGraph(
+      canvas.nodes,
+      canvas.edges,
+      opened.graph.name,
+      opened.graph.trigger,
+    );
+    const unchangedReview = await control.previewChanges(address, opened.revision, unchangedDraft);
+    expect(unchangedReview.candidate_content_sha256).toBe(opened.contentSha256);
+
     const validation = await control.validate(address, opened.revision);
     expect(validation).toMatchObject({
       graph_name: EXAMPLE_GRAPH.name,
       content_sha256: opened.contentSha256,
     });
 
-    current = await persistence.save(
-      { ...EXAMPLE_GRAPH, name: "current_dander_acceptance_updated" },
-      opened.revision,
-      address,
-    );
+    const candidate = { ...EXAMPLE_GRAPH, name: "current_dander_acceptance_updated" };
+    const changes = await control.previewChanges(address, opened.revision, candidate);
+    expect(changes.baseline_content_sha256).toBe(opened.contentSha256);
+    expect(changes.candidate_content_sha256).not.toBe(opened.contentSha256);
+    expect(changes.graph_properties_changed).toContain("name");
+    expect(changes.estimates?.rows_written).toBeNull();
+    expect(changes.estimates?.cost_usd).toBeNull();
+    // Preview must not save even though it accepts the unsaved candidate.
+    await expect(persistence.load(address)).resolves.toMatchObject({
+      revision: opened.revision,
+      contentSha256: opened.contentSha256,
+      graph: opened.graph,
+    });
+
+    current = await persistence.save(candidate, opened.revision, address);
     expect(current.revision).not.toBe(opened.revision);
+    expect(current.contentSha256).toBe(changes.candidate_content_sha256);
+    await expect(control.previewChanges(address, opened.revision, candidate)).rejects.toMatchObject(
+      { conflict: true },
+    );
 
     const previewFailure = await control
       .preview(address, current.revision)
@@ -103,6 +128,15 @@ describe("current protected Dander Control API", () => {
       .catch((error: unknown) => error);
     expect(runFailure).toBeInstanceOf(HostedControlOperationError);
     expect(runFailure).toMatchObject({ unsupported: true });
+
+    // This server intentionally has no execution plan or provider backend. Do not turn
+    // a read-only contract proof into an accidental live workload or pretend repair ran.
+    await expect(
+      control.previewRepair(address, current.revision, {
+        start_date: "2026-09-01",
+        end_date: "2026-09-03",
+      }),
+    ).rejects.toMatchObject({ unsupported: true });
 
     await persistence.delete(address, current.revision);
     current = null;

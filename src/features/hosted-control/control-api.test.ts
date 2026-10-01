@@ -5,6 +5,10 @@ import mutationFixture from "@/generated/dander-contracts/bundle/fixtures/mutati
 import previewFixture from "@/generated/dander-contracts/bundle/fixtures/deployment-preview.json";
 import runFixture from "@/generated/dander-contracts/bundle/fixtures/run-status.json";
 import validationFixture from "@/generated/dander-contracts/bundle/fixtures/graph-validation.json";
+import changeFixture from "@/generated/dander-contracts/bundle/fixtures/graph-change-preview.json";
+import repairFixture from "@/generated/dander-contracts/bundle/fixtures/graph-repair-preview.json";
+import explanationFixture from "@/generated/dander-contracts/bundle/fixtures/run-explanation.json";
+import { EXAMPLE_GRAPH } from "@/lib/pipeline-graph/__fixtures__/example-graph";
 import {
   HostedControlApiClient,
   HostedControlOperationError,
@@ -42,6 +46,50 @@ function errorResponse(status: number, code: string): Response {
 }
 
 describe("HostedControlApiClient", () => {
+  it("previews an unsaved candidate and correlates explanations without starting work", async () => {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(changeFixture))
+      .mockResolvedValueOnce(Response.json(explanationFixture));
+    const client = new HostedControlApiClient(request);
+    await expect(client.previewChanges(ADDRESS, REVISION, EXAMPLE_GRAPH)).resolves.toEqual(
+      changeFixture,
+    );
+    expect(request.mock.calls[0][0]).toMatch(/\/change-preview$/);
+    expect(request.mock.calls[0][1].headers["If-Match"]).toBe(REVISION);
+    expect(JSON.parse(request.mock.calls[0][1].body)).toEqual(EXAMPLE_GRAPH);
+    await expect(client.explainRun(explanationFixture.run_id)).resolves.toEqual(explanationFixture);
+    request.mockResolvedValueOnce(Response.json(explanationFixture));
+    await expect(client.explainRun("another-run")).rejects.toThrow(/cannot safely display/);
+  });
+
+  it("keeps ambiguous repair retries bound to the same dates, revision and environment", async () => {
+    const window = { start_date: "2026-09-01", end_date: "2026-09-03" };
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(repairFixture))
+      .mockRejectedValueOnce(new TypeError("connection lost"))
+      .mockResolvedValueOnce(
+        Response.json({ ...runFixture, repair_window: window }, { status: 202 }),
+      );
+    const client = new HostedControlApiClient(request);
+    await expect(client.previewRepair(ADDRESS, REVISION, window)).resolves.toEqual(repairFixture);
+    await expect(client.startRepair(ADDRESS, REVISION, window, "gcp")).rejects.toThrow();
+    await client.startRepair(ADDRESS, REVISION, window, "gcp");
+    expect(request.mock.calls[1]).toEqual(request.mock.calls[2]);
+    expect(request.mock.calls[2][0]).toMatch(/\/repairs\?environment=gcp$/);
+    expect(request.mock.calls[2][1].headers["If-Match"]).toBe(REVISION);
+    expect(JSON.parse(request.mock.calls[2][1].body)).toEqual(window);
+    request.mockResolvedValueOnce(
+      Response.json({ ...runFixture, repair_window: window }, { status: 202 }),
+    );
+    await expect(
+      client.startRepair(ADDRESS, REVISION, { ...window, end_date: "2026-09-04" }, "gcp"),
+    ).rejects.toMatchObject({ ambiguous: true });
+    expect(request.mock.calls[3][1].headers["Idempotency-Key"]).not.toBe(
+      request.mock.calls[2][1].headers["Idempotency-Key"],
+    );
+  });
   it("requires compatible authenticated capabilities before hosted use", async () => {
     const request = vi.fn(async () => Response.json(capabilities()));
     const client = new HostedControlApiClient(request);

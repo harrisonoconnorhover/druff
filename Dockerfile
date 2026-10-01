@@ -37,7 +37,7 @@ FROM scratch AS runner
 
 ARG SOURCE_REVISION=unrecorded
 ARG SOURCE_CREATED=1970-01-01T00:00:00Z
-ARG DRUFF_VERSION=0.1.0
+ARG DRUFF_VERSION=0.2.0-rc.1
 
 LABEL org.opencontainers.image.title="Druff"
 LABEL org.opencontainers.image.description="Static, provider-neutral Dander control-plane interface"

@@ -1,9 +1,12 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { createServer, type Server } from "node:https";
 import { tmpdir } from "node:os";
 import { extname, join, resolve } from "node:path";
+import type { RunStatusResponse, RunExplanationResponse } from "../src/lib/dander-contracts";
+import repairPreviewFixture from "../src/generated/dander-contracts/bundle/fixtures/graph-repair-preview.json";
 import staticSecurityHeaders from "../artifact/static-security-headers.json";
 import {
   DANDER_CONTRACT_BUNDLE_ID,
@@ -38,6 +41,7 @@ type StoredRun = {
   runId: string;
   state: "queued" | "running" | "succeeded" | "canceling" | "canceled";
   polls: number;
+  repairWindow?: { start_date: string; end_date: string };
 };
 
 type DurableControlState = {
@@ -61,6 +65,8 @@ function graphDocument(name: string, nodeName: string) {
         id: "source",
         type: "source",
         name: nodeName,
+        config: { connector: null, endpoint: null },
+        fields: [],
         visual: { position: { x: 20, y: 40 }, color: "green", icon: "database" },
       },
     ],
@@ -79,10 +85,22 @@ function nextRecord(
     graph,
     document,
     revision: `"revision-${durable.revision}"`,
-    contentSha: durable.revision.toString(16).padStart(64, "0"),
+    contentSha: graphHash(document),
     createdAt,
     updatedAt: `2026-08-14T10:00:${String(durable.revision).padStart(2, "0")}Z`,
   };
+}
+
+function graphHash(document: unknown): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify(document, (_key, value: unknown) => {
+        if (value && typeof value === "object" && !Array.isArray(value))
+          return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
+        return value;
+      }),
+    )
+    .digest("hex");
 }
 
 function resource(record: StoredGraph) {
@@ -100,7 +118,7 @@ function errorEnvelope(code: string, message: string) {
   return { error: { code, message, correlation_id: "e2e-correlation", details: [] } };
 }
 
-function runStatus(run: StoredRun) {
+function runStatus(run: StoredRun): RunStatusResponse {
   const terminal = run.state === "succeeded" || run.state === "canceled";
   return {
     run_id: run.runId,
@@ -120,6 +138,9 @@ function runStatus(run: StoredRun) {
     can_cancel: run.state === "queued" || run.state === "running",
     can_replay: terminal,
     logs_available: run.state === "running" || terminal,
+    result_schema:
+      run.state === "succeeded" ? "io.dander.control.execution-result-summary/v1" : null,
+    repair_window: run.repairWindow ?? null,
   };
 }
 
@@ -291,6 +312,10 @@ function createControlService(durable: DurableControlState) {
           "graph.edit",
           "graph.delete",
           "graph.validate",
+          "graph.change-preview",
+          "graph.repair-preview",
+          "run.repair",
+          "run.explain",
           "deployment.preview",
           "run.start",
           "run.read",
@@ -414,7 +439,7 @@ function createControlService(durable: DurableControlState) {
     }
 
     const operationMatch =
-      /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/(validate|deployment-preview)$/.exec(
+      /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/(validate|deployment-preview|change-preview|repair-preview)$/.exec(
         url.pathname,
       );
     if (operationMatch && request.method() === "POST") {
@@ -427,6 +452,35 @@ function createControlService(durable: DurableControlState) {
           412,
           errorEnvelope("operation_conflict", "The graph revision no longer matches."),
         );
+        return;
+      }
+      if (operation === "repair-preview") {
+        await json(route, 200, {
+          ...repairPreviewFixture,
+          graph_content_sha256: current.contentSha,
+          window: JSON.parse(request.postData() ?? "{}"),
+        });
+        return;
+      }
+      if (operation === "change-preview") {
+        const candidate = JSON.parse(request.postData() ?? "{}");
+        if (durable.runCounter === 0) expect(candidate).toEqual(current.document);
+        await json(route, 200, {
+          baseline_content_sha256: current.contentSha,
+          candidate_content_sha256: graphHash(candidate),
+          graph_properties_changed: [],
+          node_changes: [],
+          connection_changes: [],
+          affected_outputs: [],
+          outputs: [],
+          run_output_ids: [],
+          estimates: {
+            rows_written: null,
+            cost_usd: null,
+            explanation: "This synthetic preview does not inspect warehouse rows.",
+          },
+          limitations: [],
+        });
         return;
       }
       if (operation === "validate") {
@@ -464,7 +518,7 @@ function createControlService(durable: DurableControlState) {
       return;
     }
 
-    const startRunMatch = /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/runs$/.exec(
+    const startRunMatch = /^\/v1\/projects\/demo-project\/graphs\/([^/]+)\/(runs|repairs)$/.exec(
       url.pathname,
     );
     if (startRunMatch && request.method() === "POST") {
@@ -489,6 +543,9 @@ function createControlService(durable: DurableControlState) {
         runId: `run-synthetic-${durable.runCounter}`,
         state: "queued",
         polls: 0,
+        ...(startRunMatch[2] === "repairs"
+          ? { repairWindow: JSON.parse(request.postData() ?? "{}") }
+          : {}),
       };
       durable.runs.set(run.runId, run);
       const status = runStatus(run);
@@ -509,6 +566,41 @@ function createControlService(durable: DurableControlState) {
       else if (run.polls === 1) run.state = "running";
       else if (run.polls >= 2 && run.state === "running") run.state = "succeeded";
       await json(route, 200, runStatus(run));
+      return;
+    }
+
+    const explanationMatch = /^\/v1\/runs\/([^/]+)\/explanation$/.exec(url.pathname);
+    if (explanationMatch && request.method() === "GET") {
+      const run = durable.runs.get(decodeURIComponent(explanationMatch[1]!))!;
+      const nextAction: RunExplanationResponse["next_action"] =
+        run.state === "succeeded"
+          ? {
+              kind: "inspect_outputs",
+              label: "Review the pipeline outputs",
+              reason: "Confirm that the recorded output matches the result you expected.",
+            }
+          : run.state === "canceled"
+            ? {
+                kind: "inspect_outputs",
+                label: "Inspect any partial outputs",
+                reason: "Cancellation does not establish that prior writes were undone.",
+              }
+            : {
+                kind: "refresh",
+                label: "Refresh run status",
+                reason:
+                  "Wait for confirmed status and result measurements before starting another run.",
+              };
+      await json(route, 200, {
+        run_id: run.runId,
+        state: run.state,
+        results_available: run.state === "succeeded",
+        summary: `Run ${run.runId}: ${run.state}`,
+        details: [],
+        caveats: ["Synthetic browser fixture; no provider execution."],
+        available_actions: [nextAction.kind],
+        next_action: nextAction,
+      } satisfies RunExplanationResponse);
       return;
     }
 
@@ -761,7 +853,7 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
       throw new Error(`Hosted bootstrap did not settle:\n${browserEvents.join("\n")}`);
     });
   await signIn(page, browserEvents);
-  await page.getByRole("button", { name: "Browse hosted graphs" }).click();
+  await page.getByRole("button", { name: "Browse hosted graphs" }).first().click();
   await expect(page.getByText("alpha-graph", { exact: true })).toBeVisible();
   await expect(page.getByText("beta-graph", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Load more" }).click();
@@ -772,6 +864,9 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     .getByRole("button", { name: "Open" })
     .click();
 
+  await expect(page.getByRole("button", { name: "Preview changes", exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("guided-default.png"), fullPage: true });
+  await page.getByText("Advanced validation, deployment and run controls", { exact: true }).click();
   await page.getByText("Inspect catalogs and capabilities").click();
   await expect(page.getByText(/Dander 0\.9\.0rc19 · API v1/)).toBeVisible();
   await expect(page.getByText(/Installed connectors:.*Records API/)).toBeVisible();
@@ -809,15 +904,16 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
   await page.getByRole("button", { name: "Reload hosted version" }).click();
   await expect(page.locator(".react-flow__node", { hasText: "Server edit" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Start run" }).click();
-  const normalizedRun = page.getByLabel("Normalized run status");
+  await page.getByRole("button", { name: "Preview changes", exact: true }).click();
+  await page.getByRole("button", { name: "Run reviewed graph" }).click();
+  const normalizedRun = page.getByLabel("Run outcome");
   await expect(normalizedRun).toContainText("Run run-synthetic-1: queued");
   await expect(normalizedRun).toContainText("Run run-synthetic-1: running", {
     timeout: 5_000,
   });
   await page.getByRole("button", { name: "Load bounded logs" }).click();
   await expect(page.getByText("Synthetic run is progressing safely.")).toBeVisible();
-  await page.getByRole("button", { name: "Cancel run" }).click();
+  await page.getByRole("button", { name: "Cancel run", exact: true }).first().click();
   await expect(
     page.getByText("Dander acknowledged cancellation; status polling continues."),
   ).toBeVisible();
@@ -830,11 +926,42 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     timeout: 7_000,
   });
 
+  await page.getByText("Graph files and settings", { exact: true }).click();
+  const serverNodesBeforeSave = durable.records.get("alpha-graph")?.document.nodes;
   const source = page.locator(".react-flow__node", { hasText: "Server edit" });
   await source.click();
   await page.getByLabel("Name", { exact: true }).fill("Client edit");
-  await page.getByRole("button", { name: "Save hosted graph" }).click();
+  await page.getByRole("button", { name: "Preview changes", exact: true }).click();
+  await expect(page.getByText(/Rows and cost: unknown/).first()).toBeVisible();
+  expect(durable.records.get("alpha-graph")?.document.nodes).toEqual(serverNodesBeforeSave);
+  await page.getByRole("button", { name: "Save reviewed changes", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Run reviewed graph", exact: true })).toBeEnabled();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.getByText("Repair selected output dates", { exact: true }).click();
+  await page.getByLabel(/First date/).fill("2026-09-01");
+  await page.getByLabel(/End date/).fill("2026-09-03");
+  await page.getByRole("button", { name: "Preview date repair", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Start reviewed repair" })).toBeEnabled();
+  await page.getByLabel(/End date/).fill("2026-09-04");
+  await expect(page.getByRole("button", { name: "Start reviewed repair" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Preview date repair", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Start reviewed repair" })).toBeEnabled();
+  await page.getByRole("button", { name: "Start reviewed repair" }).scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({
+    path: test.info().outputPath("guided-repair-review.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Start reviewed repair" }).click();
+  await expect(normalizedRun).toContainText("2026-09-01 through 2026-09-04");
+  expect(durable.runs.get("run-synthetic-3")?.repairWindow).toEqual({
+    start_date: "2026-09-01",
+    end_date: "2026-09-04",
+  });
+  await expect(normalizedRun).toContainText("Run run-synthetic-3: succeeded", { timeout: 7_000 });
 
   const serverRecord = durable.records.get("alpha-graph")!;
   durable.records.set(
@@ -864,19 +991,23 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
   await expect(page.locator(".react-flow__node", { hasText: "Server edit" })).toBeVisible();
 
   durable.loseNextCreate = true;
-  await page.getByRole("button", { name: "Browse hosted graphs" }).click();
+  await page.getByRole("button", { name: "Browse hosted graphs" }).first().click();
   await page.getByLabel("Create from current local draft").fill("restart-graph");
   await page.getByRole("button", { name: "Create" }).click();
-  await expect(page.getByText(/could not reach/i)).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Pipeline journey", exact: true })
+      .getByText(/could not reach/i),
+  ).toBeVisible();
   restartService();
-  await page.getByRole("button", { name: "Browse hosted graphs" }).click();
+  await page.getByRole("button", { name: "Browse hosted graphs" }).first().click();
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   restartService();
   await page.reload();
   await signIn(page, browserEvents);
-  await page.getByRole("button", { name: "Browse hosted graphs" }).click();
+  await page.getByRole("button", { name: "Browse hosted graphs" }).first().click();
   await page.getByRole("button", { name: "Load more" }).click();
   await page
     .getByRole("listitem")
@@ -884,6 +1015,7 @@ test("manages hosted graphs safely across conflicts, ambiguous retries, and serv
     .getByRole("button", { name: "Open" })
     .click();
   await expect(page.locator(".react-flow__node", { hasText: "Server edit" })).toBeVisible();
+  await page.getByText("Graph files and settings", { exact: true }).click();
   await expect(page.getByLabel("Hosted graph identity")).toContainText(
     "demo-project/restart-graph",
   );

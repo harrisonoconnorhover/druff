@@ -64,6 +64,31 @@ afterEach(() => {
 });
 
 describe("useHostedRunControls", () => {
+  it("uses the repair route for reviewed dates, then retains normal polling and cancellation", async () => {
+    vi.useFakeTimers();
+    const window = { start_date: "2026-09-01", end_date: "2026-09-03" };
+    const api = client({
+      startRepair: vi.fn(async () => run("queued", { repair_window: window, can_cancel: true })),
+      getRun: vi.fn(async () => run("running", { repair_window: window, can_cancel: true })),
+    });
+    const { result } = renderHook(() =>
+      useHostedRunControls({
+        client: api,
+        capabilities: { ...CAPABILITIES, operations: [...CAPABILITIES.operations, "run.repair"] },
+        address: ADDRESS,
+        revision: REVISION,
+        graphIsClean: true,
+      }),
+    );
+    await act(async () => result.current.start({ window, environment: "gcp" }));
+    expect(api.startRepair).toHaveBeenCalledWith(ADDRESS, REVISION, window, "gcp");
+    expect(api.startRun).not.toHaveBeenCalled();
+    expect(result.current.canStartRepair).toBe(false);
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(result.current.run?.repair_window).toEqual(window);
+    await act(async () => result.current.cancel());
+    expect(api.cancelRun).toHaveBeenCalledWith("run-one");
+  });
   it("starts, polls every two seconds, loads one bounded page, and follows replay", async () => {
     vi.useFakeTimers();
     const getRun = vi
