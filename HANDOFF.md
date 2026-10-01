@@ -6,7 +6,7 @@
 - Bound unsaved change previews to the draft, graph address and revision; running requires the reviewed content hash to match the saved graph.
 - Added recorded outcome explanations, missing-measurement handling and explicit retained-raw date repair with date/revision invalidation and safe retry keys.
 - Preserved loopback editing, OIDC/capability gates, graph conflicts, logs, cancellation and replay; corrected the existing font variable and toolbar overflow.
-- Documented the experimental repair boundary and added a read-only production-client observation test for an already-completed native repair.
+- Published candidate `0.2.0-rc.1` from protected source `eabceb21`; verified native repair through the production client and preserved active/rollback images.
 
 ## Try It
 
@@ -14,13 +14,14 @@ In hosted mode, browse a graph, edit its source/output configuration, choose **P
 
 For real HTTP contract checks, start an ephemeral Dander Control API and use `DANDER_CONTROL_URL=... DANDER_EXPECTED_VERSION=... pnpm test:current-dander`. For an accepted native repair, use the explicit project, graph and run ID variables documented in README with `pnpm test:repair-observation`.
 
+Pull `ghcr.io/harrisonoconnorhover/druff:0.2.0-rc.1`, paired with the published RC34 Control wheel in README. Immutable digest: `sha256:6aade12c399a67c604577e4a022af6dff22db7764626dd9a7a4f5cea1a2ceac1`.
+
 ## Checks
 
-- Passed 685 unit/component tests, nine artifact checks, TypeScript, ESLint, Prettier and static build against the verified published RC33 wheel; independent contract regeneration reports no drift.
-- Passed all 11 Playwright journeys, including reviewed save/run, date invalidation, repair submission and existing conflict/retry behavior. Browser OIDC/API responses are synthetic.
-- Passed real HTTP acceptance against published RC34 Control: exact hashes, canvas round trip, unsaved preview/save, stale rejection and truthful unsupported execution. Final RC34 regeneration/drift, 29 contract tests, 18 journey/API tests, TypeScript and focused lint passed; its bundle is unchanged.
-- Visually inspected the synthetic browser screenshot; font and horizontal overflow defects are corrected. A focused test also confirms late explanations cannot replace newer run status.
-- PR #25 initially found three fixed high Caddy dependency findings. Pinned x/crypto 0.55.0 and gRPC 1.83.2; CI `36870826744` passed both architecture scans, reproducibility, runtime checks and frontend/secret checks.
+- PR #25 and exact-main CI `36877515144` passed: 685 unit/component tests, nine artifact checks, published-contract drift, lint/type/format/build, 11 Playwright journeys and container checks. Browser OIDC/API fixtures are synthetic; default guided-panel screenshot was visually checked.
+- Real HTTP acceptance against published RC34 passed. Native observer read `run-ec3ecadaeb48d3cca4ccf537`: September 10–12 window, zero extracted, two written, four affected. Dander separately verified unchanged outside rows/raw/watermark, restored Job and complete temporary-resource cleanup.
+- Both candidate architectures passed source-free/non-root runtime, routes/headers, reproducibility, SBOM/provenance and high/critical/secret scans. Existing Caddy findings were corrected with x/crypto 0.55.0 and gRPC 1.83.2.
+- Copied the verified OCI bytes without rebuilding; anonymous public fetch matched the exact digest. Active/rollback digests stayed unchanged; local release builder/registry were removed.
 
 ## Decisions
 
@@ -30,9 +31,8 @@ For real HTTP contract checks, start an ephemeral Dander Control API and use `DA
 
 ## Remaining
 
-- Candidate version is `0.2.0-rc.1`, paired with published RC34 Control and the unchanged contract digest in README. This does not promote the RC20 public beta.
-- Observe the separately authorized native repair once its accepted run ID is available; no provider workload was launched by Druff tests.
-- Complete protected PR #25, exact-main checks and candidate image publication with the final RC34 pin.
+- This is an integration candidate, not a promotion of Dander's RC20 public beta or other provider profiles.
+- Source credentials and deployed environments still require operator setup; historical source recovery is outside this repair capability.
 
 ## Review First
 
