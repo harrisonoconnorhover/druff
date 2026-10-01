@@ -5,7 +5,10 @@ import connectorCatalogFixture from "@/generated/dander-contracts/bundle/fixture
 import controlBootstrapFixture from "@/generated/dander-contracts/bundle/fixtures/control-bootstrap.json";
 import deploymentPreviewFixture from "@/generated/dander-contracts/bundle/fixtures/deployment-preview.json";
 import graphCreateFixture from "@/generated/dander-contracts/bundle/fixtures/graph-create.json";
+import graphChangePreviewFixture from "@/generated/dander-contracts/bundle/fixtures/graph-change-preview.json";
 import graphPageFixture from "@/generated/dander-contracts/bundle/fixtures/graph-page.json";
+import graphRepairPreviewFixture from "@/generated/dander-contracts/bundle/fixtures/graph-repair-preview.json";
+import graphRepairWindowFixture from "@/generated/dander-contracts/bundle/fixtures/graph-repair-window.json";
 import graphResourceFixture from "@/generated/dander-contracts/bundle/fixtures/graph-resource.json";
 import graphValidationFixture from "@/generated/dander-contracts/bundle/fixtures/graph-validation.json";
 import logPageFixture from "@/generated/dander-contracts/bundle/fixtures/log-page.json";
@@ -16,6 +19,7 @@ import pipelineGraphFixture from "@/generated/dander-contracts/bundle/fixtures/p
 import pluginCatalogFixture from "@/generated/dander-contracts/bundle/fixtures/plugin-catalog.json";
 import projectListFixture from "@/generated/dander-contracts/bundle/fixtures/project-list.json";
 import runPageFixture from "@/generated/dander-contracts/bundle/fixtures/run-page.json";
+import runExplanationFixture from "@/generated/dander-contracts/bundle/fixtures/run-explanation.json";
 import runRequestFixture from "@/generated/dander-contracts/bundle/fixtures/run-request.json";
 import runStatusFixture from "@/generated/dander-contracts/bundle/fixtures/run-status.json";
 import {
@@ -26,7 +30,10 @@ import {
   DeploymentPreviewResponseSchema,
   DANDER_CONTRACT_BUNDLE_SHA256,
   GraphCreateRequestSchema,
+  GraphChangePreviewResponseSchema,
   GraphPageResponseSchema,
+  GraphRepairPreviewResponseSchema,
+  GraphRepairWindowSchema,
   GraphResourceResponseSchema,
   GraphValidationResponseSchema,
   IncompatibleDanderContractError,
@@ -37,6 +44,7 @@ import {
   PluginCatalogResponseSchema,
   ProjectListResponseSchema,
   RunPageResponseSchema,
+  RunExplanationResponseSchema,
   RunRequestSchema,
   RunStatusResponseSchema,
   assertCompatibleCapabilities,
@@ -51,7 +59,10 @@ const rootFixtures: [string, { parse(value: unknown): unknown }, unknown][] = [
   ["Control bootstrap", ControlBootstrapDescriptorSchema, controlBootstrapFixture],
   ["deployment preview", DeploymentPreviewResponseSchema, deploymentPreviewFixture],
   ["graph create", GraphCreateRequestSchema, graphCreateFixture],
+  ["graph change preview", GraphChangePreviewResponseSchema, graphChangePreviewFixture],
   ["graph page", GraphPageResponseSchema, graphPageFixture],
+  ["graph repair preview", GraphRepairPreviewResponseSchema, graphRepairPreviewFixture],
+  ["graph repair window", GraphRepairWindowSchema, graphRepairWindowFixture],
   ["graph resource", GraphResourceResponseSchema, graphResourceFixture],
   ["graph validation", GraphValidationResponseSchema, graphValidationFixture],
   ["bounded log page", LogPageResponseSchema, logPageFixture],
@@ -61,6 +72,7 @@ const rootFixtures: [string, { parse(value: unknown): unknown }, unknown][] = [
   ["plugin catalog", PluginCatalogResponseSchema, pluginCatalogFixture],
   ["project list", ProjectListResponseSchema, projectListFixture],
   ["run page", RunPageResponseSchema, runPageFixture],
+  ["run explanation", RunExplanationResponseSchema, runExplanationFixture],
   ["run request", RunRequestSchema, runRequestFixture],
   ["run status", RunStatusResponseSchema, runStatusFixture],
 ];
@@ -77,6 +89,22 @@ describe("published Dander contract bundle", () => {
     expect(PipelineGraphDocumentSchema.parse(minimal)).toEqual(before);
     expect(minimal).toEqual(before);
     expect(() => PipelineGraphDocumentSchema.parse({ ...minimal, provider: "gcp" })).toThrow();
+  });
+
+  it("preserves repair boundaries and unknown estimates without inventing defaults", () => {
+    const preview = structuredClone(graphRepairPreviewFixture);
+    expect(GraphRepairPreviewResponseSchema.parse(preview)).toEqual(preview);
+    expect(preview.estimated_rows).toBeNull();
+    expect(preview.estimated_cost_usd).toBeNull();
+    expect(() =>
+      GraphRepairWindowSchema.parse({ ...graphRepairWindowFixture, extract_source: true }),
+    ).toThrow();
+    expect(() =>
+      RunExplanationResponseSchema.parse({
+        ...runExplanationFixture,
+        next_action: { ...runExplanationFixture.next_action, command: "unexpected-command" },
+      }),
+    ).toThrow();
   });
 
   it("round-trips Dander's representative graph without semantic field loss", () => {

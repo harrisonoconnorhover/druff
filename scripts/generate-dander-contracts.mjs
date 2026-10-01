@@ -12,11 +12,13 @@ import { compile } from "json-schema-to-typescript";
 import { format, resolveConfig } from "prettier";
 
 const DANDER_PACKAGE = "dander-platform";
-const DANDER_VERSION = "0.9.0rc19";
-const WHEEL_FILENAME = "dander_platform-0.9.0rc19-py3-none-any.whl";
-const WHEEL_SHA256 = "8f1336786e46471a2048d6250008ad176ff3b62d047020872659304c7d2db552";
+const DANDER_VERSION = "0.9.0rc34";
+const WHEEL_FILENAME = "dander_platform-0.9.0rc34-py3-none-any.whl";
+const WHEEL_URL =
+  "https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc34/" + WHEEL_FILENAME;
+const WHEEL_SHA256 = "d37c1d91c15cca9ce3d080af6dec384f7cd9cbc521dea253e10dc44772d35bad";
 const BUNDLE_ID = "io.dander.control.contracts/v1";
-const BUNDLE_SHA256 = "695791dfda6058d68453d9e146146d5cdda1439d86c40a7ec249cb4e14a12be3";
+const BUNDLE_SHA256 = "a28316b7e5158e0520fe1c24d59885083714f47b67aa396892fa9742060fb279";
 const BUNDLE_PATH = join("dander", "control", "contracts", "v1");
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -29,8 +31,11 @@ const roots = [
   ["connector-catalog", "ConnectorCatalogResponse", "validateConnectorCatalog"],
   ["control-bootstrap", "ControlBootstrapDescriptor", "validateControlBootstrap"],
   ["deployment-preview", "DeploymentPreviewResponse", "validateDeploymentPreview"],
+  ["graph-change-preview", "GraphChangePreviewResponse", "validateGraphChangePreview"],
   ["graph-create", "GraphCreateRequest", "validateGraphCreate"],
   ["graph-page", "GraphPageResponse", "validateGraphPage"],
+  ["graph-repair-preview", "GraphRepairPreviewResponse", "validateGraphRepairPreview"],
+  ["graph-repair-window", "GraphRepairWindow", "validateGraphRepairWindow"],
   ["graph-resource", "GraphResourceResponse", "validateGraphResource"],
   ["graph-validation", "GraphValidationResponse", "validateGraphValidation"],
   ["log-page", "LogPageResponse", "validateLogPage"],
@@ -39,6 +44,7 @@ const roots = [
   ["pipeline-graph", "PipelineGraphDocument", "validatePipelineGraph"],
   ["plugin-catalog", "PluginCatalogResponse", "validatePluginCatalog"],
   ["project-list", "ProjectListResponse", "validateProjectList"],
+  ["run-explanation", "RunExplanationResponse", "validateRunExplanation"],
   ["run-page", "RunPageResponse", "validateRunPage"],
   ["run-request", "RunRequest", "validateRunRequest"],
   ["run-status", "RunStatusResponse", "validateRunStatus"],
@@ -71,23 +77,7 @@ function fail(message) {
 }
 
 async function fetchPublishedWheel(destination) {
-  const metadataUrl = `https://pypi.org/pypi/${DANDER_PACKAGE}/${DANDER_VERSION}/json`;
-  const metadataResponse = await fetch(metadataUrl);
-  if (!metadataResponse.ok) {
-    fail(
-      `PyPI metadata request failed (${metadataResponse.status} ${metadataResponse.statusText})`,
-    );
-  }
-  const metadata = await metadataResponse.json();
-  const wheel = metadata.urls?.find(
-    (file) => file.filename === WHEEL_FILENAME && file.packagetype === "bdist_wheel",
-  );
-  if (!wheel) fail(`PyPI release does not contain ${WHEEL_FILENAME}`);
-  if (wheel.digests?.sha256 !== WHEEL_SHA256) {
-    fail(`PyPI metadata reports an unexpected wheel digest for ${WHEEL_FILENAME}`);
-  }
-
-  const wheelResponse = await fetch(wheel.url);
+  const wheelResponse = await fetch(WHEEL_URL);
   if (!wheelResponse.ok) {
     fail(`wheel download failed (${wheelResponse.status} ${wheelResponse.statusText})`);
   }
@@ -149,7 +139,7 @@ async function verifyBundle(bundleDirectory) {
     actualFiles.size !== expectedFiles.size ||
     [...actualFiles].some((path) => !expectedFiles.has(path))
   ) {
-    fail("published bundle files differ from the signed manifest inventory");
+    fail("published bundle files differ from the verified manifest inventory");
   }
   return manifest;
 }
@@ -171,6 +161,7 @@ async function generateTypes(bundleDirectory, outputDirectory) {
   const bannerComment = [
     "/**",
     ` * Generated from ${DANDER_PACKAGE}==${DANDER_VERSION} (${WHEEL_FILENAME}).`,
+    ` * Published wheel: ${WHEEL_URL}`,
     ` * Wheel SHA256: ${WHEEL_SHA256}`,
     ` * Contract bundle: ${BUNDLE_ID} (${BUNDLE_SHA256})`,
     " * Do not edit by hand; run `pnpm contracts:generate`.",
@@ -266,6 +257,7 @@ async function generateMetadata(outputDirectory) {
     export const DANDER_CONTRACT_PACKAGE = ${JSON.stringify(DANDER_PACKAGE)} as const;
     export const DANDER_CONTRACT_PACKAGE_VERSION = ${JSON.stringify(DANDER_VERSION)} as const;
     export const DANDER_CONTRACT_WHEEL = ${JSON.stringify(WHEEL_FILENAME)} as const;
+    export const DANDER_CONTRACT_WHEEL_URL = ${JSON.stringify(WHEEL_URL)} as const;
     export const DANDER_CONTRACT_WHEEL_SHA256 = ${JSON.stringify(WHEEL_SHA256)} as const;
     export const DANDER_CONTRACT_BUNDLE_ID = ${JSON.stringify(BUNDLE_ID)} as const;
     export const DANDER_CONTRACT_BUNDLE_SHA256 = ${JSON.stringify(BUNDLE_SHA256)} as const;

@@ -29,15 +29,16 @@ ARG TARGETARCH
 RUN XCADDY_SETCAP=0 CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     xcaddy build v2.11.4 \
       --output /usr/bin/caddy \
+      --replace golang.org/x/crypto=golang.org/x/crypto@v0.55.0 \
       --replace golang.org/x/net=golang.org/x/net@v0.56.0 \
       --replace golang.org/x/text=golang.org/x/text@v0.39.0 \
-      --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
+      --replace google.golang.org/grpc=google.golang.org/grpc@v1.83.2
 
 FROM scratch AS runner
 
 ARG SOURCE_REVISION=unrecorded
 ARG SOURCE_CREATED=1970-01-01T00:00:00Z
-ARG DRUFF_VERSION=0.1.0
+ARG DRUFF_VERSION=0.2.0-rc.1
 
 LABEL org.opencontainers.image.title="Druff"
 LABEL org.opencontainers.image.description="Static, provider-neutral Dander control-plane interface"

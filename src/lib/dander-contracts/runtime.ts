@@ -11,7 +11,10 @@ import {
   validateFieldMapping,
   validateFieldTest,
   validateGraphCreate,
+  validateGraphChangePreview,
   validateGraphPage,
+  validateGraphRepairPreview,
+  validateGraphRepairWindow,
   validateGraphResource,
   validateGraphValidation,
   validateJoin,
@@ -29,6 +32,7 @@ import {
   validatePosition,
   validateProjectList,
   validateRunPage,
+  validateRunExplanation,
   validateRunRequest,
   validateRunStatus,
   validateTransformation,
@@ -101,6 +105,18 @@ export const GraphCreateRequestSchema = generatedContractSchema(
   "graph create request",
   validateGraphCreate,
 );
+export const GraphChangePreviewResponseSchema = generatedContractSchema(
+  "graph change preview",
+  validateGraphChangePreview,
+);
+export const GraphRepairPreviewResponseSchema = generatedContractSchema(
+  "graph repair preview",
+  validateGraphRepairPreview,
+);
+export const GraphRepairWindowSchema = generatedContractSchema(
+  "graph repair window",
+  validateGraphRepairWindow,
+);
 export const GraphPageResponseSchema = generatedContractSchema("graph page", validateGraphPage);
 export const GraphResourceResponseSchema = generatedContractSchema(
   "graph resource",
@@ -132,6 +148,10 @@ export const ProjectListResponseSchema = generatedContractSchema(
   validateProjectList,
 );
 export const RunPageResponseSchema = generatedContractSchema("run page", validateRunPage);
+export const RunExplanationResponseSchema = generatedContractSchema(
+  "run explanation",
+  validateRunExplanation,
+);
 export const RunRequestSchema = generatedContractSchema("run request", validateRunRequest);
 export const RunStatusResponseSchema = generatedContractSchema("run status", validateRunStatus);
 

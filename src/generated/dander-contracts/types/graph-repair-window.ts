@@ -6,18 +6,13 @@
  * Do not edit by hand; run `pnpm contracts:generate`.
  */
 
-export type AffectedJobs = string[];
-export type CandidateImage = string;
-export type PlanSha256 = string;
-export type PlanSummary = string;
-export type PlanText = string;
-export type Revision = string;
+export type EndDate = string;
+export type StartDate = string;
 
-export interface DeploymentPreviewResponse {
-  affected_jobs?: AffectedJobs;
-  candidate_image: CandidateImage;
-  plan_sha256: PlanSha256;
-  plan_summary: PlanSummary;
-  plan_text: PlanText;
-  revision: Revision;
+/**
+ * UTC calendar dates: start is inclusive and end is exclusive.
+ */
+export interface GraphRepairWindow {
+  end_date: EndDate;
+  start_date: StartDate;
 }

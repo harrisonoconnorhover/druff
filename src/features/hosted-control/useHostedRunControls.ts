@@ -9,6 +9,7 @@ import {
 import type {
   CapabilitiesResponse,
   LogPageResponse,
+  GraphRepairWindow,
   RunStatusResponse,
 } from "@/lib/dander-contracts";
 import type { GraphAddress } from "@/lib/persistence/graph-persistence";
@@ -35,19 +36,22 @@ type RunView = {
 export type HostedRunControls = RunView & {
   polling: boolean;
   canStart: boolean;
+  canStartRepair: boolean;
   canCancel: boolean;
   canReplay: boolean;
   canLoadLogs: boolean;
-  start(): Promise<void>;
+  start(repair?: { window: GraphRepairWindow; environment: string }): Promise<void>;
   cancel(): Promise<void>;
   replay(): Promise<void>;
   loadLogs(): Promise<void>;
+  refresh(): Promise<void>;
 };
 
 export type HostedRunClient = Pick<
   HostedControlApiClient,
   "startRun" | "getRun" | "logs" | "cancelRun" | "replayRun"
->;
+> &
+  Partial<Pick<HostedControlApiClient, "startRepair">>;
 
 const ACTIVE_STATES = new Set<RunStatusResponse["state"]>([
   "queued",
@@ -136,59 +140,65 @@ export function useHostedRunControls({
     };
   }, [client, pollIntervalMs, polling, view.run]);
 
-  const start = useCallback(async () => {
-    if (
-      !client ||
-      !address ||
-      !revision ||
-      !graphIsClean ||
-      !has("run.start") ||
-      !canReadRun ||
-      view.pending !== null ||
-      view.logsPending ||
-      activeRun
-    ) {
+  const start = useCallback(
+    async (repair?: { window: GraphRepairWindow; environment: string }) => {
+      if (
+        !client ||
+        !address ||
+        !revision ||
+        !graphIsClean ||
+        !(repair ? has("run.repair") && client.startRepair : has("run.start")) ||
+        !canReadRun ||
+        view.pending !== null ||
+        view.logsPending ||
+        activeRun
+      ) {
+        setView((current) => ({
+          ...current,
+          error: repair
+            ? "Open and save a hosted graph with run.repair and run.read access before starting a repair."
+            : "Open and save a hosted graph with run.start and run.read access before starting a run.",
+        }));
+        return;
+      }
+      const origin = { address, revision };
       setView((current) => ({
         ...current,
-        error:
-          "Open and save a hosted graph with run.start and run.read access before starting a run.",
+        pending: "start",
+        error: null,
+        conflict: false,
+        acknowledgement: null,
       }));
-      return;
-    }
-    const origin = { address, revision };
-    setView((current) => ({
-      ...current,
-      pending: "start",
-      error: null,
-      conflict: false,
-      acknowledgement: null,
-    }));
-    try {
-      const run = await client.startRun(address, revision);
-      setView({
-        ...EMPTY_VIEW,
-        run,
-        origin,
-      });
-    } catch (cause) {
-      setView((current) => ({
-        ...current,
-        pending: null,
-        error: operationMessage(cause, "Druff could not start this run."),
-        conflict: cause instanceof HostedControlOperationError && cause.conflict,
-      }));
-    }
-  }, [
-    activeRun,
-    address,
-    canReadRun,
-    client,
-    graphIsClean,
-    has,
-    revision,
-    view.logsPending,
-    view.pending,
-  ]);
+      try {
+        const run = repair
+          ? await client.startRepair!(address, revision, repair.window, repair.environment)
+          : await client.startRun(address, revision);
+        setView({
+          ...EMPTY_VIEW,
+          run,
+          origin,
+        });
+      } catch (cause) {
+        setView((current) => ({
+          ...current,
+          pending: null,
+          error: operationMessage(cause, "Druff could not start this run."),
+          conflict: cause instanceof HostedControlOperationError && cause.conflict,
+        }));
+      }
+    },
+    [
+      activeRun,
+      address,
+      canReadRun,
+      client,
+      graphIsClean,
+      has,
+      revision,
+      view.logsPending,
+      view.pending,
+    ],
+  );
 
   const cancel = useCallback(async () => {
     const captured = view.run;
@@ -318,9 +328,39 @@ export function useHostedRunControls({
     }
   }, [client, has, logLimit, view.logsPending, view.pending, view.run]);
 
+  const refresh = useCallback(async () => {
+    if (!client || !view.run || !canReadRun || view.pending) return;
+    const runId = view.run.run_id;
+    try {
+      const run = await client.getRun(runId);
+      setView((current) =>
+        current.run?.run_id === runId
+          ? { ...current, run, error: null, pollingPaused: false }
+          : current,
+      );
+    } catch (cause) {
+      setView((current) =>
+        current.run?.run_id === runId
+          ? { ...current, error: operationMessage(cause, "Druff could not refresh this run.") }
+          : current,
+      );
+    }
+  }, [client, canReadRun, view.run, view.pending]);
+
   return {
     ...view,
     polling,
+    canStartRepair: Boolean(
+      client?.startRepair &&
+      address &&
+      revision &&
+      graphIsClean &&
+      has("run.repair") &&
+      canReadRun &&
+      view.pending === null &&
+      !view.logsPending &&
+      !activeRun,
+    ),
     canStart:
       client !== null &&
       address !== null &&
@@ -353,6 +393,7 @@ export function useHostedRunControls({
     cancel,
     replay,
     loadLogs,
+    refresh,
   };
 }
 

@@ -3,6 +3,10 @@ import {
   ApiErrorEnvelopeSchema,
   DeploymentPreviewResponseSchema,
   GraphValidationResponseSchema,
+  GraphChangePreviewResponseSchema,
+  GraphRepairPreviewResponseSchema,
+  GraphRepairWindowSchema,
+  RunExplanationResponseSchema,
   IncompatibleDanderContractError,
   LogPageResponseSchema,
   MutationResultSchema,
@@ -11,10 +15,15 @@ import {
   type CapabilitiesResponse,
   type DeploymentPreviewResponse,
   type GraphValidationResponse,
+  type GraphChangePreviewResponse,
+  type GraphRepairPreviewResponse,
+  type GraphRepairWindow,
+  type RunExplanationResponse,
   type LogPageResponse,
   type MutationResult,
   type RunStatusResponse,
 } from "@/lib/dander-contracts";
+import { PipelineGraphSchema, type PipelineGraph } from "@/lib/pipeline-graph";
 import type { GraphAddress } from "@/lib/persistence/graph-persistence";
 
 const MAX_CAPABILITIES_BYTES = 128 * 1024;
@@ -151,6 +160,116 @@ export class HostedControlApiClient {
     return run;
   }
 
+  /** Compare the unsaved document without saving it or submitting any warehouse work. */
+  async previewChanges(
+    address: GraphAddress,
+    revision: string,
+    document: PipelineGraph,
+  ): Promise<GraphChangePreviewResponse> {
+    const body = PipelineGraphSchema.parse(document);
+    const response = await this.request(`${graphPath(address)}/change-preview`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": revision,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 200)
+      throw await operationError(response, "Dander could not preview these changes.");
+    const parsed = GraphChangePreviewResponseSchema.safeParse(
+      await readBoundedJson(response, MAX_PREVIEW_BYTES),
+    );
+    if (!parsed.success) throw incompatibleResponse("graph change preview");
+    return parsed.data;
+  }
+
+  /** Explain only the server's recorded evidence for this exact run. */
+  async explainRun(runId: string): Promise<RunExplanationResponse> {
+    const response = await this.request(`/v1/runs/${encodeURIComponent(runId)}/explanation`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (response.status !== 200)
+      throw await operationError(response, "Dander could not explain this run.");
+    const parsed = RunExplanationResponseSchema.safeParse(
+      await readBoundedJson(response, MAX_RUN_STATUS_BYTES),
+    );
+    if (!parsed.success || parsed.data.run_id !== runId)
+      throw incompatibleResponse("run explanation");
+    return parsed.data;
+  }
+
+  /** Eligibility and write scope come from Dander; preview never launches a repair. */
+  async previewRepair(
+    address: GraphAddress,
+    revision: string,
+    window: GraphRepairWindow,
+  ): Promise<GraphRepairPreviewResponse> {
+    const body = GraphRepairWindowSchema.parse(window);
+    const response = await this.request(`${graphPath(address)}/repair-preview`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": revision,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 200)
+      throw await operationError(response, "Dander could not preview this repair.");
+    const parsed = GraphRepairPreviewResponseSchema.safeParse(
+      await readBoundedJson(response, MAX_PREVIEW_BYTES),
+    );
+    if (!parsed.success || !sameWindow(parsed.data.window, body))
+      throw incompatibleResponse("date repair preview");
+    return parsed.data;
+  }
+
+  /** Lost responses retain the key for this exact graph revision, dates and environment. */
+  async startRepair(
+    address: GraphAddress,
+    revision: string,
+    window: GraphRepairWindow,
+    environment: string,
+  ): Promise<RunStatusResponse> {
+    const body = GraphRepairWindowSchema.parse(window);
+    const scope = `repair:${addressKey(address)}`;
+    const mutation = this.mutationFor(
+      scope,
+      JSON.stringify([
+        "repair",
+        address.project,
+        address.graph,
+        revision,
+        body.start_date,
+        body.end_date,
+        environment,
+      ]),
+    );
+    const query = new URLSearchParams({ environment });
+    const response = await this.request(`${graphPath(address)}/repairs?${query.toString()}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": revision,
+        "Idempotency-Key": mutation.idempotencyKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 202) {
+      this.clearDefinitiveFailure(scope, response.status);
+      throw await operationError(response, "Dander could not start this repair.");
+    }
+    const run = await readRunStatus(response, "repair start result", true);
+    if (!run.repair_window || !sameWindow(run.repair_window, body))
+      throw ambiguousMutationResponse("repair result for a different date window");
+    this.pendingMutations.delete(scope);
+    return run;
+  }
+
   async getRun(runId: string): Promise<RunStatusResponse> {
     const response = await this.request(`/v1/runs/${encodeURIComponent(runId)}`, {
       method: "GET",
@@ -248,6 +367,10 @@ export class HostedControlApiClient {
       this.pendingMutations.delete(scope);
     }
   }
+}
+
+function sameWindow(left: GraphRepairWindow, right: GraphRepairWindow): boolean {
+  return left.start_date === right.start_date && left.end_date === right.end_date;
 }
 
 function graphPath(address: GraphAddress): string {
