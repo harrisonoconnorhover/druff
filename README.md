@@ -60,10 +60,10 @@ pnpm dev              # http://localhost:3000
 ```
 
 Contract output is generated only from the pinned
-[`dander-platform==0.9.0rc33` GitHub integration-candidate wheel](https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc33/dander_platform-0.9.0rc33-py3-none-any.whl),
-SHA-256 `2dd84610ab96093944d41f21706e410c30e83b6c92f719d1aa50ec0c7841661f`.
+[`dander-platform==0.9.0rc34` GitHub integration-candidate wheel](https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc34/dander_platform-0.9.0rc34-py3-none-any.whl),
+SHA-256 `d37c1d91c15cca9ce3d080af6dec384f7cd9cbc521dea253e10dc44772d35bad`.
 The generator verifies the wheel, manifest, every file, and the whole bundle before writing output;
-it never reads a sibling Dander checkout. This client requires the matching RC33 bundle. The
+it never reads a sibling Dander checkout. This client requires the matching RC34 bundle. The
 GitHub integration candidate does not promote Dander's public PyPI RC20 beta or qualify additional
 provider profiles.
 
@@ -76,12 +76,12 @@ Release acceptance can additionally exercise Druff's production graph and operat
 against a locally running current Dander Control API:
 
 ```bash
-# In an environment installed from the pinned RC33 wheel above (not the RC20 PyPI beta):
+# In an environment installed from the pinned RC34 wheel above (not the RC20 PyPI beta):
 dander control serve --ephemeral --project demo-project --port 8770
 
 # In Druff:
 DANDER_CONTROL_URL=http://127.0.0.1:8770 \
-DANDER_EXPECTED_VERSION=0.9.0rc33 \
+DANDER_EXPECTED_VERSION=0.9.0rc34 \
 pnpm test:current-dander
 ```
 
@@ -164,14 +164,16 @@ To inspect an already-completed operator-owned native repair through Druff's rea
 without starting another workload:
 
 ```bash
-DANDER_CONTROL_URL=http://127.0.0.1:8875 \
-DANDER_REPAIR_PROJECT=repair-proof \
-DANDER_REPAIR_GRAPH=repair-events \
+DANDER_CONTROL_URL=http://127.0.0.1:8876 \
+DANDER_REPAIR_PROJECT=repair-proof-rc34 \
+DANDER_REPAIR_GRAPH=repair-corrections \
 DANDER_REPAIR_RUN_ID=REPLACE_WITH_ACCEPTED_RUN_ID \
 pnpm test:repair-observation
 ```
 
-This observation verifies the exact contract, saved graph, repair preview, status and explanation.
+This observation verifies the exact contract, saved graph, repair preview, status and explanation
+for the September 10–12 synthetic fixture, including zero extracted rows, two output rows written
+and four output rows affected.
 The operator's separate provider evidence must establish warehouse results, watermarks and cleanup.
 
 To enable the narrow operational controls for one graph that is already deployed, start Dander

@@ -1,4 +1,4 @@
-// Generated from dander-platform==0.9.0rc33; do not edit.
+// Generated from dander-platform==0.9.0rc34; do not edit.
 // Contract bundle io.dander.control.contracts/v1 (a28316b7e5158e0520fe1c24d59885083714f47b67aa396892fa9742060fb279).
 "use strict";
 export const validateApiError = validate20;

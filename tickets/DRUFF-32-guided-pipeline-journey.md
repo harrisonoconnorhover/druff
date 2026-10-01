@@ -35,18 +35,22 @@ explanation endpoint. The loopback editor remains separate.
 
 ## Verification
 
-Final published-contract checks passed: 685 unit/component tests; TypeScript, ESLint, Prettier, static build; all
+Published RC33 contract checks passed: 685 unit/component tests; TypeScript, ESLint, Prettier, static build; all
 11 Playwright journeys; real HTTP acceptance against an ephemeral published-wheel Dander RC33 Control
 API. Browser OIDC/API fixtures are synthetic. The actual HTTP test covers canonical canvas hash
 identity, unsaved preview, exact save and stale preview rejection without a provider backend.
 
-Contracts were regenerated from the published RC33 GitHub wheel, with exact wheel/bundle hashes
-and independent drift verification. This GitHub candidate does not promote the RC20 PyPI beta.
+Contracts were finally regenerated from the published RC34 GitHub wheel, with exact wheel/bundle
+hashes and independent drift verification. RC34 fixes Control's native image identity reconciliation;
+the contract bundle is unchanged. Final real HTTP acceptance against RC34, 29 contract tests,
+18 journey/API tests, TypeScript and focused lint passed. This GitHub candidate does not promote
+the RC20 PyPI beta.
 Native repair success and cleanup remain separate operator qualification;
 `pnpm test:repair-observation` reads an accepted run without launching another workload.
 
 Protected PR run `36869153273` passed frontend and secret checks but found three fixed high
 vulnerabilities in the existing Caddy binary dependencies. Pin `golang.org/x/crypto` to `v0.55.0`
 for CVE-2026-56854 and `google.golang.org/grpc` to `v1.83.2` for CVE-2026-84304 and
-CVE-2026-84445. Keep the existing Caddy version, image pins and scan policy; the protected
-container build and scan must pass with these replacements before merge.
+CVE-2026-84445. The existing Caddy version, image pins and scan policy remain intact. Protected
+run `36870826744` passed both architecture scans, reproducibility, runtime/routes/headers and
+frontend/secret checks with those replacements.

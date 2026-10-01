@@ -28,7 +28,7 @@ const request: HostedControlFetch = async (target, init) => {
 const control = new HostedControlApiClient(request);
 const persistence = new HostedGraphPersistence(request);
 
-it("reads an accepted native repair through the production Druff clients without starting another workload", async () => {
+it("reads the RC34 synthetic repair through the production Druff clients without starting another workload", async () => {
   const capabilities = await control.capabilities();
   expect(capabilities.contract).toEqual({
     id: DANDER_CONTRACT_BUNDLE_ID,
@@ -38,8 +38,10 @@ it("reads an accepted native repair through the production Druff clients without
   const saved = await persistence.load(address);
   const run = await control.getRun(runId);
   expect(run.state).toBe("succeeded");
-  expect(run.repair_window).toBeTruthy();
+  expect(run.repair_window).toEqual({ start_date: "2026-09-10", end_date: "2026-09-12" });
   expect(run.result_schema).toBeTruthy();
+  expect(run.extracted).toBe(0);
+  expect(run.telemetry).toMatchObject({ rows_written: 2, rows_affected: 4 });
   const preview = await control.previewRepair(address, saved.revision, run.repair_window!);
   expect(preview.graph_content_sha256).toBe(saved.contentSha256);
   expect(preview.window).toEqual(run.repair_window);

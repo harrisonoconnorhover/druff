@@ -12,11 +12,11 @@ import { compile } from "json-schema-to-typescript";
 import { format, resolveConfig } from "prettier";
 
 const DANDER_PACKAGE = "dander-platform";
-const DANDER_VERSION = "0.9.0rc33";
-const WHEEL_FILENAME = "dander_platform-0.9.0rc33-py3-none-any.whl";
+const DANDER_VERSION = "0.9.0rc34";
+const WHEEL_FILENAME = "dander_platform-0.9.0rc34-py3-none-any.whl";
 const WHEEL_URL =
-  "https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc33/" + WHEEL_FILENAME;
-const WHEEL_SHA256 = "2dd84610ab96093944d41f21706e410c30e83b6c92f719d1aa50ec0c7841661f";
+  "https://github.com/harrisonoconnorhover/dander/releases/download/v0.9.0rc34/" + WHEEL_FILENAME;
+const WHEEL_SHA256 = "d37c1d91c15cca9ce3d080af6dec384f7cd9cbc521dea253e10dc44772d35bad";
 const BUNDLE_ID = "io.dander.control.contracts/v1";
 const BUNDLE_SHA256 = "a28316b7e5158e0520fe1c24d59885083714f47b67aa396892fa9742060fb279";
 const BUNDLE_PATH = join("dander", "control", "contracts", "v1");
