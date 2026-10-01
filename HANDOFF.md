@@ -20,6 +20,7 @@ For real HTTP contract checks, start an ephemeral Dander Control API and use `DA
 - Passed all 11 Playwright journeys, including reviewed save/run, date invalidation, repair submission and existing conflict/retry behavior. Browser OIDC/API responses are synthetic.
 - Passed production-client real HTTP acceptance against an ephemeral Control API installed from the published RC33 wheel: exact hashes, canvas round trip, unsaved preview, save, stale preview rejection and truthful unsupported execution.
 - Visually inspected the synthetic browser screenshot; font and horizontal overflow defects are corrected. A focused test also confirms late explanations cannot replace newer run status.
+- PR #25 frontend/secret checks passed; its container scan found three fixed high findings in existing Caddy dependencies. Pinned x/crypto 0.55.0 and gRPC 1.83.2; protected container recheck is pending.
 
 ## Decisions
 
@@ -31,7 +32,7 @@ For real HTTP contract checks, start an ephemeral Dander Control API and use `DA
 
 - Candidate version is `0.2.0-rc.1`, paired with the exact published RC33 wheel and contract digest in README. This does not promote the RC20 public beta.
 - Observe the separately authorized native repair once its accepted run ID is available; no provider workload was launched by Druff tests.
-- Commit the coordinated client/generator changes, then complete protected PR, exact-main checks and authorized release steps.
+- Complete protected PR #25, exact-main checks and authorized candidate image publication after the container recheck.
 
 ## Review First
 

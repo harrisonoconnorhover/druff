@@ -44,3 +44,9 @@ Contracts were regenerated from the published RC33 GitHub wheel, with exact whee
 and independent drift verification. This GitHub candidate does not promote the RC20 PyPI beta.
 Native repair success and cleanup remain separate operator qualification;
 `pnpm test:repair-observation` reads an accepted run without launching another workload.
+
+Protected PR run `36869153273` passed frontend and secret checks but found three fixed high
+vulnerabilities in the existing Caddy binary dependencies. Pin `golang.org/x/crypto` to `v0.55.0`
+for CVE-2026-56854 and `google.golang.org/grpc` to `v1.83.2` for CVE-2026-84304 and
+CVE-2026-84445. Keep the existing Caddy version, image pins and scan policy; the protected
+container build and scan must pass with these replacements before merge.

@@ -29,9 +29,10 @@ ARG TARGETARCH
 RUN XCADDY_SETCAP=0 CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     xcaddy build v2.11.4 \
       --output /usr/bin/caddy \
+      --replace golang.org/x/crypto=golang.org/x/crypto@v0.55.0 \
       --replace golang.org/x/net=golang.org/x/net@v0.56.0 \
       --replace golang.org/x/text=golang.org/x/text@v0.39.0 \
-      --replace google.golang.org/grpc=google.golang.org/grpc@v1.82.1
+      --replace google.golang.org/grpc=google.golang.org/grpc@v1.83.2
 
 FROM scratch AS runner
 
